@@ -1,0 +1,17 @@
+version: '2'
+sql:
+  - engine: 'postgresql'
+    queries: 'internal/database/queries'
+    schema: 'internal/database/schema.sql'
+    gen:
+      go:
+        package: 'database'
+        out: 'internal/database/sqlc'
+        sql_package: 'pgx/v5'
+        #overrides:
+        #  - column: "users.id"
+        #    nullable: false
+        #    go_type: "github.com/google/uuid.UUID"
+plugins: []
+rules: []
+options: {}
