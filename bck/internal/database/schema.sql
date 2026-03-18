@@ -5,6 +5,16 @@ CREATE TYPE mode_type AS ENUM ('THEORY', 'LABORATORY');
 CREATE TYPE week_day AS ENUM ('MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY');
 
 -- ============================================
+-- CARRERAS
+-- ============================================
+CREATE TABLE careers (
+  id           SERIAL PRIMARY KEY,
+  code         VARCHAR(10)  NOT NULL UNIQUE,  -- Ej: "IND", "SIS", "CIV"
+  name         VARCHAR(100) NOT NULL UNIQUE,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
 -- HORAS ACADÉMICAS (lookup table)
 -- ============================================
 CREATE TABLE academic_hours (
@@ -69,6 +79,7 @@ CREATE TABLE courses (
   abbreviation      VARCHAR(10) NOT NULL,
   color             VARCHAR(7) NOT NULL,
   type              mode_type NOT NULL,
+  id_career         INTEGER NOT NULL,
   id_course_theory  INTEGER,
   academic_year     SMALLINT NOT NULL, -- 1 a 5 año
   id_teacher        INTEGER,
@@ -81,7 +92,8 @@ CREATE TABLE courses (
     (type = 'THEORY' AND id_course_theory IS NULL)
   ),
   CONSTRAINT fk_course_teacher FOREIGN KEY (id_teacher) REFERENCES teachers(id) ON DELETE SET NULL,
-  CONSTRAINT fk_course_theory FOREIGN KEY (id_course_theory) REFERENCES courses(id) ON DELETE SET NULL
+  CONSTRAINT fk_course_theory FOREIGN KEY (id_course_theory) REFERENCES courses(id) ON DELETE SET NULL,
+  CONSTRAINT fk_course_career FOREIGN KEY (id_career) REFERENCES careers(id) ON DELETE CASCADE
 );
 
 -- ============================================

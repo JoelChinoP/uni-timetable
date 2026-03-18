@@ -44,11 +44,7 @@ func LoadConfig() (AppConfig, error) {
 			return
 		}
 
-		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
-		if jwtSecret == "" {
-			cfgErr = fmt.Errorf("config: JWT_SECRET es requerido")
-			return
-		}
+		jwtSecret := getEnv("JWT_SECRET", "change_me")
 
 		dbMaxConns, err := getEnvInt32("DB_MAX_CONNS", 6)
 		if err != nil {
@@ -78,22 +74,24 @@ func LoadConfig() (AppConfig, error) {
 		// DB_PASSWORD puede ser vacío en algunos entornos.
 		dbPassword := os.Getenv("DB_PASSWORD")
 
-		missing := make([]string, 0, 4)
-		if dbHost == "" {
-			missing = append(missing, "DB_HOST")
-		}
-		if dbPort == "" {
-			missing = append(missing, "DB_PORT")
-		}
-		if dbUser == "" {
-			missing = append(missing, "DB_USER")
-		}
-		if dbName == "" {
-			missing = append(missing, "DB_NAME")
-		}
-		if len(missing) > 0 {
-			cfgErr = fmt.Errorf("config: variables requeridas faltantes: %s", strings.Join(missing, ", "))
-			return
+		if dbHost != "" || dbPort != "" || dbUser != "" || dbName != "" || strings.TrimSpace(dbPassword) != "" {
+			missing := make([]string, 0, 4)
+			if dbHost == "" {
+				missing = append(missing, "DB_HOST")
+			}
+			if dbPort == "" {
+				missing = append(missing, "DB_PORT")
+			}
+			if dbUser == "" {
+				missing = append(missing, "DB_USER")
+			}
+			if dbName == "" {
+				missing = append(missing, "DB_NAME")
+			}
+			if len(missing) > 0 {
+				cfgErr = fmt.Errorf("config: variables requeridas faltantes: %s", strings.Join(missing, ", "))
+				return
+			}
 		}
 
 		cfg = AppConfig{

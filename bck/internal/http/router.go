@@ -2,37 +2,37 @@ package http
 
 import (
 	"os"
+	"strings"
 	"time"
 
-	/* auth "github.com/JoelChinoP/OAuth-with-Go/internal/auth"
-	user "github.com/JoelChinoP/OAuth-with-Go/internal/user" */
+	"github.com/JoelChinoP/timetable_bck/internal/ui"
 	"github.com/gofiber/fiber/v2"
 )
 
-// SetupRoutes configura las rutas de la aplicación
+const apiPrefix = "/api"
+
+// SetupRoutes configures API routes and frontend delivery.
 func SetupRoutes(app *fiber.App) {
+	api := app.Group(apiPrefix)
 
-	// Hello World (raíz)
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("¡Hello, World!")
-	})
+	api.Get("/status", func(c *fiber.Ctx) error {
+		environment := strings.TrimSpace(os.Getenv("GO_ENV"))
+		if environment == "" {
+			environment = "development"
+		}
 
-	// Configuración de CORS
-	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"environment": os.Getenv("GO_ENV"),
+			"environment": environment,
 			"version":     "1.0.0",
 			"timestamp":   time.Now().Format(time.RFC3339),
 		})
 	})
 
-	/*** RUTAS LIBRES ***/
-	/* 	auth.RegisterRoutes(app) // Ensure AuthRoutes is defined or imported
-	 */
-	/*** RUTAS PROTEGIDAS ***/
-	/* 	api := app.Group("/api")
-	   	api.Use(AuthenticationMiddleware()) // Middleware de autenticación para todas las rutas de la API
-	*/
-	// Rutas de la API
-	/* 	user.RegisterRoutes(api) // Ensure UserRoutes is defined or imported */
+	/*** PUBLIC ROUTES ***/
+	/* auth.RegisterRoutes(api) */
+	/*** PROTECTED ROUTES ***/
+	/* api.Use(AuthenticationMiddleware()) */
+	/* user.RegisterRoutes(api) */
+
+	ui.Mount(app, apiPrefix)
 }

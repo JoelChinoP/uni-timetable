@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,16 +20,26 @@ func SetupCORS(app *fiber.App, origins string) {
 		origins = "*"
 	}
 
+	allowCredentials := strings.TrimSpace(origins) != "*"
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     origins,
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-		AllowCredentials: true,
+		AllowCredentials: allowCredentials,
 	}))
 }
 
 // SetupGlobalErrorHandler configura el manejador de errores global para la aplicación Fiber
 func SetupGlobalErrorHandler(c *fiber.Ctx, err error) error {
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) {
+		return c.Status(fiberErr.Code).JSON(ErrorResponse{
+			Success: false,
+			Message: fiberErr.Message,
+		})
+	}
+
 	// Si el error es de tipo *fiber.Error, se maneja de manera especial
 	if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 		return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
