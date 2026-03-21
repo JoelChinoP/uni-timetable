@@ -15,7 +15,10 @@ CREATE TABLE careers (
 );
 
 -- ============================================
--- HORAS ACADÉMICAS (lookup table)
+-- HORAS ACADÉMICAS (lookup table global)
+-- Las horas son institucionales y compartidas por todas las carreras.
+-- El subconjunto de horas disponibles por carrera se gestiona
+-- en la tabla "career_available_hours".
 -- ============================================
 CREATE TABLE academic_hours (
   hour_number SMALLINT PRIMARY KEY, -- 1 a 15 horas académicas
@@ -44,15 +47,49 @@ INSERT INTO academic_hours (hour_number, start_time, end_time) VALUES
 (15, '19:20', '20:10');
 
 -- ============================================
+-- HORAS DISPONIBLES POR CARRERA (tabla de restricción)
+-- Define qué horas académicas están habilitadas para cada carrera.
+-- Si una carrera no tiene registros aquí, se asume que usa todas.
+-- No duplica tiempos: sólo referencia las horas globales.
+-- ============================================
+CREATE TABLE career_available_hours (
+  id_career   INTEGER  NOT NULL,
+  hour_number SMALLINT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+ 
+  PRIMARY KEY (id_career, hour_number),
+  CONSTRAINT fk_cah_career FOREIGN KEY (id_career)   REFERENCES careers(id)        ON DELETE CASCADE,
+  CONSTRAINT fk_cah_hour   FOREIGN KEY (hour_number) REFERENCES academic_hours(hour_number) ON DELETE CASCADE
+);
+
+-- ============================================
 -- DOCENTES
+-- Un docente puede pertenecer a más de una carrera (ej: cursos
+-- compartidos entre Ingeniería Industrial y Civil).
+-- La relación con carreras se gestiona en "career_teachers".
 -- ============================================
 CREATE TABLE teachers (
   id         SERIAL PRIMARY KEY,
   name       VARCHAR(100) NOT NULL,
   last_name  VARCHAR(100) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-
+ 
   CONSTRAINT unique_teacher_name_last_name UNIQUE (name, last_name)
+);
+ 
+-- ============================================
+-- DOCENTES POR CARRERA (tabla junction Many-to-Many)
+-- Relaciona docentes con una o más carreras.
+-- Permite filtrar los docentes disponibles al asignar un curso.
+-- ============================================
+CREATE TABLE career_teachers (
+  id_career  INTEGER NOT NULL,
+  id_teacher INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+ 
+  PRIMARY KEY (id_career, id_teacher),
+  CONSTRAINT fk_ct_career  FOREIGN KEY (id_career)  REFERENCES careers(id)  ON DELETE CASCADE,
+  CONSTRAINT fk_ct_teacher FOREIGN KEY (id_teacher) REFERENCES teachers(id) ON DELETE CASCADE
 );
 
 -- ============================================
@@ -71,6 +108,10 @@ CREATE TABLE classrooms (
 
 -- ============================================
 -- CURSOS
+-- Cada curso ya pertenece a una carrera mediante id_career.
+-- El docente asignado (id_teacher) debe existir en career_teachers
+-- para esa carrera — validación recomendada a nivel de aplicación
+-- o mediante trigger si se requiere integridad estricta en BD.
 -- ============================================
 CREATE TABLE courses (
   id                SERIAL PRIMARY KEY,
@@ -79,21 +120,21 @@ CREATE TABLE courses (
   abbreviation      VARCHAR(10) NOT NULL,
   color             VARCHAR(7) NOT NULL,
   type              mode_type NOT NULL,
-  id_career         INTEGER NOT NULL,
-  id_course_theory  INTEGER,
-  academic_year     SMALLINT NOT NULL, -- 1 a 5 año
-  id_teacher        INTEGER,
+  id_career         INTEGER NOT NULL,            -- carrera propietaria del curso
+  id_course_theory  INTEGER,                     -- sólo para cursos tipo LABORATORY
+  academic_year     SMALLINT NOT NULL,           -- 1 a 5 año
+  id_teacher        INTEGER,                     -- docente asignado (nullable)
   created_at        TIMESTAMPTZ DEFAULT NOW(),
-
+ 
   CONSTRAINT unique_course_name_abbreviation UNIQUE (name, abbreviation),
   CONSTRAINT valid_academic_year CHECK (academic_year > 0 AND academic_year <= 5),
   CONSTRAINT valid_type_course CHECK (
     (type = 'LABORATORY' AND id_course_theory IS NOT NULL) OR
-    (type = 'THEORY' AND id_course_theory IS NULL)
+    (type = 'THEORY'     AND id_course_theory IS NULL)
   ),
-  CONSTRAINT fk_course_teacher FOREIGN KEY (id_teacher) REFERENCES teachers(id) ON DELETE SET NULL,
-  CONSTRAINT fk_course_theory FOREIGN KEY (id_course_theory) REFERENCES courses(id) ON DELETE SET NULL,
-  CONSTRAINT fk_course_career FOREIGN KEY (id_career) REFERENCES careers(id) ON DELETE CASCADE
+  CONSTRAINT fk_course_teacher FOREIGN KEY (id_teacher)       REFERENCES teachers(id) ON DELETE SET NULL,
+  CONSTRAINT fk_course_theory  FOREIGN KEY (id_course_theory) REFERENCES courses(id)  ON DELETE SET NULL,
+  CONSTRAINT fk_course_career  FOREIGN KEY (id_career)        REFERENCES careers(id)  ON DELETE CASCADE
 );
 
 -- ============================================
@@ -114,18 +155,21 @@ CREATE TABLE groups (
 
 -- ============================================
 -- HORARIOS
+-- start_hour_academic referencia las horas globales de academic_hours.
+-- La validación de que esa hora esté habilitada para la carrera
+-- del curso se hace a nivel de aplicación (o trigger), consultando
+-- career_available_hours con el id_career del curso del grupo.
 -- ============================================
 CREATE TABLE schedule (
   id                  SERIAL PRIMARY KEY,
-  id_group            INTEGER NOT NULL,
+  id_group            INTEGER  NOT NULL,
   day                 week_day NOT NULL,
   start_hour_academic SMALLINT NOT NULL,
   duration_hours      SMALLINT NOT NULL, -- máximo 4 horas académicas
-/*   id_classroom        INTEGER, --opcional solo en caso de asignación fija */
   created_at          TIMESTAMPTZ DEFAULT NOW(),
-
+ 
   CONSTRAINT valid_duration CHECK (duration_hours > 0 AND duration_hours <= 4),
-  CONSTRAINT fk_schedule_group FOREIGN KEY (id_group) REFERENCES groups(id) ON DELETE CASCADE,
+  CONSTRAINT fk_schedule_group      FOREIGN KEY (id_group)            REFERENCES groups(id)         ON DELETE CASCADE,
   CONSTRAINT fk_schedule_start_hour FOREIGN KEY (start_hour_academic) REFERENCES academic_hours(hour_number) ON DELETE CASCADE
 );
 

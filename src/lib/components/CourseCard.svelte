@@ -1,11 +1,17 @@
 <script lang="ts">
-	import type { Course, CourseGroup } from '../types/planner';
-	import { getGroupButtonTone } from '../utils/planner';
+	import type { AcademicHour, Course, CourseGroup } from '../types/planner';
+	import { formatTimeRange, getGroupButtonTone, getModeLabel } from '../utils/planner';
 
 	export let course: Course;
+	export let academicHours: AcademicHour[] = [];
 	export let selectedGroupId: number | null;
 	export let onToggleGroup: (courseId: number, groupId: number) => void;
 	export let onOpenDetails: (course: Course) => void;
+
+	$: previewGroup =
+		course.groups.find(({ id }) => id === selectedGroupId) ??
+		course.groups.find(({ status }) => status === 'recommended') ??
+		course.groups[0];
 
 	function getContrastTextColor(hexColor: string) {
 		const normalized = hexColor.replace('#', '');
@@ -23,7 +29,7 @@
 
 	function getCardStyle() {
 		if (selectedGroupId) {
-			return `--course-accent:${course.color};border-color:color-mix(in srgb, var(--course-accent) 28%, var(--ui-border-strong));background:color-mix(in srgb, var(--course-accent) 5%, var(--ui-surface));`;
+			return `--course-accent:${course.color};border-color:color-mix(in srgb, var(--course-accent) 26%, var(--ui-border-strong));background:color-mix(in srgb, var(--course-accent) 5%, var(--ui-surface));`;
 		}
 
 		return `--course-accent:${course.color};`;
@@ -34,11 +40,11 @@
 		const contrastTextColor = getContrastTextColor(course.color);
 
 		if (tone === 'selected') {
-			return `--group-accent:${course.color};background:var(--group-accent);border-color:transparent;color:${contrastTextColor};box-shadow:0 12px 22px color-mix(in srgb, var(--group-accent) 28%, transparent);`;
+			return `--group-accent:${course.color};background:var(--group-accent);border-color:transparent;color:${contrastTextColor};`;
 		}
 
 		if (tone === 'recommended') {
-			return `--group-accent:${course.color};background:color-mix(in srgb, var(--group-accent) 12%, var(--ui-surface));border-color:color-mix(in srgb, var(--group-accent) 28%, var(--ui-border));color:var(--group-accent);`;
+			return `--group-accent:${course.color};background:color-mix(in srgb, var(--group-accent) 10%, var(--ui-surface));border-color:color-mix(in srgb, var(--group-accent) 26%, var(--ui-border));color:var(--group-accent);`;
 		}
 
 		return `--group-accent:${course.color};`;
@@ -46,71 +52,36 @@
 </script>
 
 <article
-	class="rounded-[28px] border border-border-subtle bg-surface p-4 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-panel"
+	class="rounded-[18px] border border-border-subtle bg-surface p-3 shadow-card transition duration-200 hover:border-border-strong"
 	style={getCardStyle()}
 >
-	<div class="flex items-start gap-3">
-		<span class="mt-1 h-3 w-3 shrink-0 rounded-full" style={`background:${course.color};`}></span>
-
-		<div class="min-w-0 flex-1">
-			<button class="block w-full text-left" type="button" on:click={() => onOpenDetails(course)}>
-				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0">
-						<p
-							class="text-[10px] font-extrabold uppercase tracking-[0.22em]"
-							style={`color:${course.color};`}
-						>
-							{course.code}
-						</p>
-						<h3 class="mt-1 line-clamp-2 text-base font-bold leading-6 text-primary">
-							{course.name}
-						</h3>
-					</div>
-
-					<div class="flex shrink-0 flex-col items-end gap-2">
-						<span
-							class="rounded-full bg-surface-muted px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted"
-						>
-							{course.credits} cr
-						</span>
-						<span
-							class={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.2em] ${
-								selectedGroupId ? 'bg-accent-soft text-accent' : 'bg-surface-muted text-muted'
-							}`}
-						>
-							{selectedGroupId ? 'Activo' : 'Pendiente'}
-						</span>
-					</div>
+	<button class="block w-full text-left" type="button" on:click={() => onOpenDetails(course)}>
+		<div class="space-y-2">
+			{#each previewGroup?.sessions ?? [] as session (session.id)}
+				<div class="rounded-[14px] bg-surface-muted px-3 py-2">
+					<p class="text-[9px] font-extrabold uppercase tracking-[0.24em] text-secondary">
+						{getModeLabel(session.mode)}
+					</p>
+					<h3 class="mt-1 text-sm font-semibold leading-5 text-primary">{session.title}</h3>
+					<p class="mt-1 text-[11px] text-muted">
+						{formatTimeRange(session.startHourAcademic, session.durationHours, academicHours)}
+					</p>
 				</div>
-
-				<p class="mt-3 line-clamp-2 text-sm leading-6 text-secondary">{course.summary}</p>
-			</button>
-
-			<div class="mt-3 flex flex-wrap gap-2">
-				<span class="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-secondary">
-					{course.teacher.fullName}
-				</span>
-				<span class="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-secondary">
-					Ano {course.academicYear}
-				</span>
-				<span class="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-secondary">
-					{course.groups.length} grupos
-				</span>
-			</div>
-
-			<div class="mt-4 flex flex-wrap gap-2" aria-label={`${course.code} grupos`}>
-				{#each course.groups as group (group.id)}
-					<button
-						class="min-w-[56px] rounded-xl border border-border-subtle px-3 py-2 text-sm font-bold text-secondary transition duration-200 hover:-translate-y-0.5 hover:border-accent/30 hover:text-primary"
-						type="button"
-						aria-pressed={group.id === selectedGroupId}
-						style={getGroupStyle(group)}
-						on:click={() => onToggleGroup(course.id, group.id)}
-					>
-						{group.name}
-					</button>
-				{/each}
-			</div>
+			{/each}
 		</div>
+	</button>
+
+	<div class="mt-3 flex flex-wrap gap-1.5" aria-label={`${course.name} grupos`}>
+		{#each course.groups as group (group.id)}
+			<button
+				class="min-w-[44px] rounded-lg border border-border-subtle px-2.5 py-1.5 text-xs font-bold text-secondary transition duration-200 hover:border-accent/30 hover:text-primary"
+				type="button"
+				aria-pressed={group.id === selectedGroupId}
+				style={getGroupStyle(group)}
+				on:click={() => onToggleGroup(course.id, group.id)}
+			>
+				{group.name}
+			</button>
+		{/each}
 	</div>
 </article>

@@ -102,6 +102,7 @@ body,
 #app {
 	height: 100%;
 	min-height: 100%;
+	overflow: hidden;
 }
 
 body {
@@ -109,6 +110,7 @@ body {
 	margin: 0;
 	background: var(--ui-background);
 	color: var(--ui-text);
+	overflow: hidden;
 }
 
 * {

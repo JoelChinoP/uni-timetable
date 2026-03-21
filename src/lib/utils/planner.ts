@@ -24,8 +24,11 @@ const modeLabels: Record<SessionMode, string> = {
 	LABORATORY: 'Practico',
 };
 
-export const BOARD_HOUR_HEIGHT = 74;
-export const BOARD_EVENT_GAP = 8;
+export const BOARD_START_HOUR = 7;
+export const BOARD_END_HOUR = 21;
+export const BOARD_START_MINUTES = BOARD_START_HOUR * 60;
+export const BOARD_END_MINUTES = BOARD_END_HOUR * 60;
+export const BOARD_TOTAL_MINUTES = BOARD_END_MINUTES - BOARD_START_MINUTES;
 
 export function getDayLabel(day: PlannerDay) {
 	return dayLabels[day];
@@ -180,7 +183,7 @@ export function formatSummaryHours(hours: number) {
 	return `${hours.toFixed(1)} h`;
 }
 
-export function formatTimeRange(
+export function getAcademicTimeRange(
 	startHourAcademic: number,
 	durationHours: number,
 	academicHours: AcademicHour[],
@@ -191,10 +194,32 @@ export function formatTimeRange(
 	);
 
 	if (!start || !end) {
+		return null;
+	}
+
+	return {
+		startTime: start.startTime,
+		endTime: end.endTime,
+		startMinutes: toMinutes(start.startTime),
+		endMinutes: toMinutes(end.endTime),
+	};
+}
+
+export function formatTimeRange(
+	startHourAcademic: number,
+	durationHours: number,
+	academicHours: AcademicHour[],
+) {
+	const range = getAcademicTimeRange(startHourAcademic, durationHours, academicHours);
+	if (!range) {
 		return 'Schedule unavailable';
 	}
 
-	return `${start.startTime} - ${end.endTime}`;
+	return `${range.startTime} - ${range.endTime}`;
+}
+
+export function formatBoardHour(hour: number) {
+	return `${String(hour).padStart(2, '0')}:00`;
 }
 
 export function matchesCourseSearch(course: Course, searchQuery: string) {
@@ -223,16 +248,12 @@ function getSessionMinutes(
 	durationHours: number,
 	academicHours: AcademicHour[],
 ) {
-	const start = academicHours.find(({ hourNumber }) => hourNumber === startHourAcademic);
-	const end = academicHours.find(
-		({ hourNumber }) => hourNumber === startHourAcademic + durationHours - 1,
-	);
-
-	if (!start || !end) {
+	const range = getAcademicTimeRange(startHourAcademic, durationHours, academicHours);
+	if (!range) {
 		return durationHours * 50;
 	}
 
-	return toMinutes(end.endTime) - toMinutes(start.startTime);
+	return range.endMinutes - range.startMinutes;
 }
 
 function toMinutes(timeValue: string) {

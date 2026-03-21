@@ -40,8 +40,7 @@
 		try {
 			dashboard = await loadPlannerDashboard();
 		} catch (error) {
-			errorMessage =
-				error instanceof Error ? error.message : 'No se pudo cargar el planner.';
+			errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 		} finally {
 			isLoading = false;
 		}
@@ -143,7 +142,7 @@
 		</div>
 	</div>
 {:else if dashboard}
-	<div class="min-h-full">
+	<div class="flex min-h-screen flex-col overflow-hidden">
 		<HeaderBar
 			navigation={dashboard.navigation}
 			user={dashboard.user}
@@ -151,27 +150,28 @@
 			onToggleTheme={() => theme.toggle()}
 		/>
 
-		<main class="mx-auto flex w-full max-w-[1880px] flex-1 flex-col px-4 pb-6 pt-4 sm:px-6 xl:px-8">
-			<div class="grid min-h-0 flex-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+		<main
+			class="mx-auto flex h-[calc(100vh-60px)] min-h-0 w-full max-w-[1880px] flex-1 flex-col px-3 pb-3 pt-3 sm:px-4 xl:px-6"
+		>
+			<div
+				class="grid min-h-0 flex-1 gap-3 xl:grid-cols-[310px_minmax(0,1fr)] 2xl:grid-cols-[330px_minmax(0,1fr)]"
+			>
 				<CourseExplorer
 					termLabel={dashboard.termLabel}
 					{searchQuery}
 					courses={filteredCourses}
 					{selectedGroups}
+					academicHours={dashboard.academicHours}
 					onSearchChange={handleSearchChange}
 					onToggleGroup={handleGroupToggle}
 					onOpenDetails={openCourseDetails}
 				/>
 
-				<section class="flex min-h-0 flex-col gap-4">
+				<section class="flex min-h-0 flex-col gap-2">
 					<WeeklyPlanner
-						boardTitle={dashboard.boardTitle}
-						boardSubtitle={dashboard.boardSubtitle}
-						tabs={dashboard.tabs}
 						days={dashboard.days}
 						academicHours={dashboard.academicHours}
 						events={plannerEvents}
-						conflicts={plannerConflicts}
 						onOpenEvent={openEventDetails}
 					/>
 
