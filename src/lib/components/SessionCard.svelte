@@ -20,10 +20,10 @@
 	style={cardStyle}
 	on:click={() => onOpen(event)}
 >
-	<p class="text-[9px] font-extrabold uppercase tracking-[0.22em] text-secondary">
+	<p class="text-[9px] font-extrabold tracking-[0.22em] text-secondary uppercase">
 		{getModeLabel(event.mode)}
 	</p>
-	<h4 class="mt-1 line-clamp-2 text-sm font-semibold leading-[1.05rem] text-primary">
+	<h4 class="mt-1 line-clamp-2 text-sm leading-[1.05rem] font-semibold text-primary">
 		{event.title}
 	</h4>
 	<p class="mt-auto pt-2 text-[11px] text-secondary">{timeLabel}</p>

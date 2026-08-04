@@ -1,0 +1,11 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"framework": "go",
+	"regions": ["gru1"],
+	"crons": [
+		{
+			"path": "/internal/keepalive",
+			"schedule": "0 11 * * *"
+		}
+	]
+}

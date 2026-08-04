@@ -33,7 +33,7 @@
 			</div>
 
 			<div class="min-w-0">
-				<p class="text-[9px] font-extrabold uppercase tracking-[0.26em] text-accent">
+				<p class="text-[9px] font-extrabold tracking-[0.26em] text-accent uppercase">
 					Uni Timetable
 				</p>
 				<h1 class="truncate font-display text-base leading-tight text-primary sm:text-lg">

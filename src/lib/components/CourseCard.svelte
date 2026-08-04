@@ -59,10 +59,10 @@
 		<div class="space-y-2">
 			{#each previewGroup?.sessions ?? [] as session (session.id)}
 				<div class="rounded-[14px] bg-surface-muted px-3 py-2">
-					<p class="text-[9px] font-extrabold uppercase tracking-[0.24em] text-secondary">
+					<p class="text-[9px] font-extrabold tracking-[0.24em] text-secondary uppercase">
 						{getModeLabel(session.mode)}
 					</p>
-					<h3 class="mt-1 text-sm font-semibold leading-5 text-primary">{session.title}</h3>
+					<h3 class="mt-1 text-sm leading-5 font-semibold text-primary">{session.title}</h3>
 					<p class="mt-1 text-[11px] text-muted">
 						{formatTimeRange(session.startHourAcademic, session.durationHours, academicHours)}
 					</p>

@@ -9,9 +9,10 @@
 	<article
 		class="rounded-[16px] border border-border-subtle bg-panel px-4 py-3 shadow-card backdrop-blur-xl"
 	>
-		<p class="text-[9px] font-extrabold uppercase tracking-[0.24em] text-muted">Cursos</p>
+		<p class="text-[9px] font-extrabold tracking-[0.24em] text-muted uppercase">Cursos</p>
 		<div class="mt-1.5 flex items-end justify-between gap-3">
-			<strong class="text-2xl font-bold leading-none text-primary">{summary.selectedCourses}</strong>
+			<strong class="text-2xl leading-none font-bold text-primary">{summary.selectedCourses}</strong
+			>
 			<span class="text-xs text-secondary">seleccionados</span>
 		</div>
 	</article>
@@ -19,9 +20,9 @@
 	<article
 		class="rounded-[16px] border border-border-subtle bg-panel px-4 py-3 shadow-card backdrop-blur-xl"
 	>
-		<p class="text-[9px] font-extrabold uppercase tracking-[0.24em] text-muted">Horas</p>
+		<p class="text-[9px] font-extrabold tracking-[0.24em] text-muted uppercase">Horas</p>
 		<div class="mt-1.5 flex items-end justify-between gap-3">
-			<strong class="text-2xl font-bold leading-none text-primary">
+			<strong class="text-2xl leading-none font-bold text-primary">
 				{formatSummaryHours(summary.weeklyHours)}
 			</strong>
 			<span class="text-xs text-secondary">por semana</span>
@@ -35,12 +36,16 @@
 				: 'border-border-subtle bg-panel'
 		}`}
 	>
-		<p class="text-[9px] font-extrabold uppercase tracking-[0.24em] text-muted">Conflictos</p>
+		<p class="text-[9px] font-extrabold tracking-[0.24em] text-muted uppercase">Conflictos</p>
 		<div class="mt-1.5 flex items-end justify-between gap-3">
-			<strong class={`text-2xl font-bold leading-none ${summary.conflictCount > 0 ? 'text-warning' : 'text-primary'}`}>
+			<strong
+				class={`text-2xl leading-none font-bold ${summary.conflictCount > 0 ? 'text-warning' : 'text-primary'}`}
+			>
 				{summary.conflictCount}
 			</strong>
-			<span class="text-xs text-secondary">{summary.conflictCount > 0 ? 'activos' : 'sin cruces'}</span>
+			<span class="text-xs text-secondary"
+				>{summary.conflictCount > 0 ? 'activos' : 'sin cruces'}</span
+			>
 		</div>
 	</article>
 </section>

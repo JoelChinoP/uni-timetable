@@ -16,7 +16,7 @@
 	export let events: PlannerEvent[] = [];
 	export let onOpenEvent: (event: PlannerEvent) => void;
 
-	$: boardHours = Array.from(
+	const boardHours = Array.from(
 		{ length: BOARD_END_HOUR - BOARD_START_HOUR },
 		(_, index) => BOARD_START_HOUR + index,
 	);
@@ -30,14 +30,10 @@
 	);
 
 	$: dayColumnsStyle = `grid-template-columns: repeat(${days.length}, minmax(0, 1fr));`;
-	$: rowsStyle = `grid-template-rows: repeat(${boardHours.length}, minmax(0, 1fr));`;
+	const rowsStyle = `grid-template-rows: repeat(${boardHours.length}, minmax(0, 1fr));`;
 
 	function getEventLayout(event: PlannerEvent) {
-		const range = getAcademicTimeRange(
-			event.startHourAcademic,
-			event.durationHours,
-			academicHours,
-		);
+		const range = getAcademicTimeRange(event.startHourAcademic, event.durationHours, academicHours);
 
 		if (!range) {
 			return null;
@@ -59,7 +55,7 @@
 	class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-border-subtle bg-surface shadow-card"
 >
 	<div class="grid h-full min-h-0 grid-cols-[70px_minmax(0,1fr)] grid-rows-[48px_minmax(0,1fr)]">
-		<div class="border-b border-r border-border-subtle bg-surface"></div>
+		<div class="border-r border-b border-border-subtle bg-surface"></div>
 
 		<div class="grid border-b border-border-subtle bg-surface" style={dayColumnsStyle}>
 			{#each days as day (day)}
@@ -75,7 +71,7 @@
 			{#each boardHours as hour, index (hour)}
 				<div
 					class={`border-b border-border-subtle px-2 text-right text-[11px] text-secondary ${
-						index === boardHours.length - 1 ? 'pb-2 pt-2' : 'pt-2'
+						index === boardHours.length - 1 ? 'pt-2 pb-2' : 'pt-2'
 					}`}
 				>
 					<div

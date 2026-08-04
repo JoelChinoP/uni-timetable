@@ -18,7 +18,7 @@
 	<div class="border-b border-border-subtle pb-3">
 		<div class="flex items-center justify-between gap-3">
 			<div>
-				<p class="text-[9px] font-extrabold uppercase tracking-[0.26em] text-accent">Cursos</p>
+				<p class="text-[9px] font-extrabold tracking-[0.26em] text-accent uppercase">Cursos</p>
 				<h2 class="mt-1 text-sm font-semibold text-primary">Seleccion de horario</h2>
 			</div>
 			<span class="text-[11px] font-medium text-muted">{termLabel}</span>
@@ -52,7 +52,9 @@
 	<div class="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
 		<div class="space-y-2">
 			{#if courses.length === 0}
-				<div class="rounded-[18px] border border-dashed border-border-strong bg-surface p-4 shadow-card">
+				<div
+					class="rounded-[18px] border border-dashed border-border-strong bg-surface p-4 shadow-card"
+				>
 					<h3 class="text-sm font-semibold text-primary">Sin resultados</h3>
 					<p class="mt-1 text-xs leading-5 text-secondary">
 						Prueba otra busqueda para volver a mostrar cursos.

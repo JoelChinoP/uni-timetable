@@ -113,7 +113,7 @@
 			class="w-full max-w-2xl rounded-[32px] border border-border-subtle bg-panel p-8 shadow-panel backdrop-blur-xl"
 		>
 			<span
-				class="inline-flex rounded-full bg-accent-soft px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.24em] text-accent"
+				class="inline-flex rounded-full bg-accent-soft px-4 py-1 text-[11px] font-extrabold tracking-[0.24em] text-accent uppercase"
 			>
 				Planner
 			</span>
@@ -131,7 +131,7 @@
 			class="w-full max-w-2xl rounded-[32px] border border-warning/20 bg-panel p-8 shadow-panel backdrop-blur-xl"
 		>
 			<span
-				class="inline-flex rounded-full bg-warning-soft px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.24em] text-warning"
+				class="inline-flex rounded-full bg-warning-soft px-4 py-1 text-[11px] font-extrabold tracking-[0.24em] text-warning uppercase"
 			>
 				Error
 			</span>
@@ -151,7 +151,7 @@
 		/>
 
 		<main
-			class="mx-auto flex h-[calc(100vh-60px)] min-h-0 w-full max-w-[1880px] flex-1 flex-col px-3 pb-3 pt-3 sm:px-4 xl:px-6"
+			class="mx-auto flex h-[calc(100vh-60px)] min-h-0 w-full max-w-[1880px] flex-1 flex-col px-3 pt-3 pb-3 sm:px-4 xl:px-6"
 		>
 			<div
 				class="grid min-h-0 flex-1 gap-3 xl:grid-cols-[310px_minmax(0,1fr)] 2xl:grid-cols-[330px_minmax(0,1fr)]"

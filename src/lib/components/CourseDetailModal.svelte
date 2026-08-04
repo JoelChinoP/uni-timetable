@@ -50,7 +50,7 @@
 					<div class="flex flex-wrap items-center gap-2">
 						<span class="h-3 w-3 rounded-full" style={`background:${course.color};`}></span>
 						<span
-							class="text-[10px] font-extrabold uppercase tracking-[0.24em]"
+							class="text-[10px] font-extrabold tracking-[0.24em] uppercase"
 							style={`color:${course.color};`}
 						>
 							{course.code}
@@ -58,7 +58,7 @@
 
 						{#if selectedGroup}
 							<span
-								class="rounded-full bg-surface-muted px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.22em] text-secondary"
+								class="rounded-full bg-surface-muted px-3 py-1 text-[10px] font-extrabold tracking-[0.22em] text-secondary uppercase"
 							>
 								Grupo {selectedGroup.name}
 							</span>
@@ -112,19 +112,21 @@
 			{/if}
 		</div>
 
-		<div class="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4 sm:px-6">
+		<div class="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5 sm:px-6">
 			{#if selectedGroup}
 				<section class="rounded-[28px] border border-border-subtle bg-surface p-4 shadow-card">
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<p class="text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted">
+							<p class="text-[10px] font-extrabold tracking-[0.22em] text-muted uppercase">
 								Seccion elegida
 							</p>
-							<h3 class="mt-2 text-xl font-bold text-primary">Horario del grupo {selectedGroup.name}</h3>
+							<h3 class="mt-2 text-xl font-bold text-primary">
+								Horario del grupo {selectedGroup.name}
+							</h3>
 						</div>
 
 						<span
-							class="rounded-full bg-surface-muted px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-secondary"
+							class="rounded-full bg-surface-muted px-3 py-1.5 text-xs font-bold tracking-[0.18em] text-secondary uppercase"
 						>
 							{selectedGroup.sessions.length} bloques
 						</span>
