@@ -181,7 +181,7 @@ type AppCourse struct {
 	Name           string
 	Abbreviation   string
 	Summary        string
-	Credits        int16
+	Credits        pgtype.Int2
 	Color          string
 	Type           AppModeType
 	IDCareer       int32
@@ -207,6 +207,13 @@ type AppSchedule struct {
 	StartHourAcademic int16
 	DurationHours     int16
 	CreatedAt         pgtype.Timestamptz
+}
+
+type AppSharedTimetable struct {
+	ID        string
+	Selection []byte
+	CreatedBy pgtype.Int4
+	CreatedAt pgtype.Timestamptz
 }
 
 type AppTeacher struct {

@@ -7,7 +7,7 @@ import ts from 'typescript-eslint';
 import svelteConfig from './svelte.config.js';
 
 export default defineConfig(
-	{ ignores: ['dist/**', 'backend/**'] },
+	{ ignores: ['dist/**', 'backend/**', '.opencode/**'] },
 	js.configs.recommended,
 	...ts.configs.recommended,
 	...svelte.configs.recommended,

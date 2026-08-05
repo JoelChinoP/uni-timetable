@@ -44,15 +44,13 @@
 			>
 				{user.role}
 			</span>
-			{#if user.role === 'ADMIN'}
-				<button
-					class="rounded-full border border-border-subtle px-3 py-2 text-sm font-bold text-primary transition hover:bg-surface-muted"
-					type="button"
-					on:click={() => onNavigate('/panel')}
-				>
-					Panel
-				</button>
-			{/if}
+			<button
+				class="rounded-full border border-border-subtle px-3 py-2 text-sm font-bold text-primary transition hover:bg-surface-muted"
+				type="button"
+				on:click={() => onNavigate('/panel')}
+			>
+				Panel
+			</button>
 			<button
 				class="rounded-full border border-border-subtle px-3 py-2 text-sm font-bold text-secondary transition hover:bg-surface-muted hover:text-primary"
 				type="button"

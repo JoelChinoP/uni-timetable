@@ -10,6 +10,7 @@
 		"dev": "node scripts/dev.mjs",
 		"dev:frontend": "vite",
 		"dev:backend": "go -C backend run ./cmd/api",
+		"db:seed": "go -C backend run ./cmd/seed",
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "npm run check:frontend && npm run check:backend",

@@ -9,20 +9,17 @@ export default defineConfig({
 	server: {
 		host: '127.0.0.1',
 		strictPort: true,
-		proxy: {
-			'/auth': {
-				target: backendUrl,
-				changeOrigin: true,
-			},
-			'/users': {
-				target: backendUrl,
-				changeOrigin: true,
-			},
-			'/api': {
-				target: backendUrl,
-				changeOrigin: true,
-				rewrite: (path) => path.replace(/^\/api/, ''),
-			},
-		},
+		proxy: Object.fromEntries(
+			[
+				'/auth',
+				'/users',
+				'/planner',
+				'/shared',
+				'/classrooms',
+				'/teachers',
+				'/courses',
+				'/groups',
+			].map((prefix) => [prefix, { target: backendUrl, changeOrigin: true }]),
+		),
 	},
 });

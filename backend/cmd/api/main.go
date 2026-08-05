@@ -24,6 +24,7 @@ type routeConfig struct {
 	adminEmail     string
 	allowedOrigins []string
 	secureCookies  bool
+	sessions       *sessionStore
 }
 
 func main() {
@@ -107,10 +108,14 @@ func routes(config routeConfig) http.Handler {
 	if config.db != nil {
 		queries = database.New(config.db)
 	}
+	sessions := config.sessions
+	if sessions == nil {
+		sessions = newSessionStore()
+	}
 	auth := &authHandler{
 		queries:    queries,
 		verifier:   config.googleVerifier,
-		sessions:   newSessionStore(),
+		sessions:   sessions,
 		adminEmail: config.adminEmail,
 		secure:     config.secureCookies,
 	}
@@ -125,6 +130,26 @@ func routes(config routeConfig) http.Handler {
 	mux.HandleFunc("GET /auth/me", auth.me)
 	mux.HandleFunc("POST /auth/logout", auth.logout)
 	mux.HandleFunc("/users", auth.users)
+
+	termLabel := os.Getenv("TERM_LABEL")
+	if termLabel == "" {
+		termLabel = "2026-B"
+	}
+	planner := &plannerHandler{queries: queries, termLabel: termLabel}
+	catalog := &catalogHandler{queries: queries, db: config.db, auth: auth}
+	shared := &sharedHandler{queries: queries, auth: auth}
+
+	mux.HandleFunc("GET /planner/dashboard", planner.dashboard)
+	mux.HandleFunc("/shared", shared.shared)
+	mux.HandleFunc("GET /shared/{id}", shared.getShared)
+	mux.HandleFunc("/classrooms", catalog.classrooms)
+	mux.HandleFunc("DELETE /classrooms/{id}", catalog.deleteClassroom)
+	mux.HandleFunc("/teachers", catalog.teachers)
+	mux.HandleFunc("DELETE /teachers/{id}", catalog.deleteTeacher)
+	mux.HandleFunc("POST /courses", catalog.courses)
+	mux.HandleFunc("DELETE /courses/{id}", catalog.deleteCourse)
+	mux.HandleFunc("POST /groups", catalog.groups)
+	mux.HandleFunc("DELETE /groups/{id}", catalog.deleteGroup)
 
 	mux.HandleFunc("GET /ready", func(w http.ResponseWriter, r *http.Request) {
 		if config.db == nil {
@@ -186,7 +211,7 @@ func withCORS(next http.Handler, origins []string) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Add("Vary", "Origin")
 
 		if r.Method == http.MethodOptions {

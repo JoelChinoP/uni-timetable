@@ -2,10 +2,7 @@
 	import SessionCard from './SessionCard.svelte';
 	import type { AcademicHour, PlannerDay, PlannerEvent } from '../types/planner';
 	import {
-		BOARD_END_HOUR,
-		BOARD_START_HOUR,
-		BOARD_START_MINUTES,
-		BOARD_TOTAL_MINUTES,
+		deriveBoardBounds,
 		formatBoardHour,
 		getAcademicTimeRange,
 		getDayLabel,
@@ -16,9 +13,12 @@
 	export let events: PlannerEvent[] = [];
 	export let onOpenEvent: (event: PlannerEvent) => void;
 
-	const boardHours = Array.from(
-		{ length: BOARD_END_HOUR - BOARD_START_HOUR },
-		(_, index) => BOARD_START_HOUR + index,
+	$: bounds = deriveBoardBounds(academicHours);
+	$: startMinutes = bounds.startHour * 60;
+	$: totalMinutes = (bounds.endHour - bounds.startHour) * 60;
+	$: boardHours = Array.from(
+		{ length: bounds.endHour - bounds.startHour },
+		(_, index) => bounds.startHour + index,
 	);
 
 	$: eventsByDay = days.reduce<Record<PlannerDay, PlannerEvent[]>>(
@@ -30,7 +30,7 @@
 	);
 
 	$: dayColumnsStyle = `grid-template-columns: repeat(${days.length}, minmax(0, 1fr));`;
-	const rowsStyle = `grid-template-rows: repeat(${boardHours.length}, minmax(0, 1fr));`;
+	$: rowsStyle = `grid-template-rows: repeat(${boardHours.length}, minmax(0, 1fr));`;
 
 	function getEventLayout(event: PlannerEvent) {
 		const range = getAcademicTimeRange(event.startHourAcademic, event.durationHours, academicHours);
@@ -39,28 +39,28 @@
 			return null;
 		}
 
-		const startMinutes = Math.max(range.startMinutes, BOARD_START_MINUTES);
-		const endMinutes = Math.min(range.endMinutes, BOARD_START_MINUTES + BOARD_TOTAL_MINUTES);
-		const clippedDuration = Math.max(endMinutes - startMinutes, 30);
+		const clippedStart = Math.max(range.startMinutes, startMinutes);
+		const clippedEnd = Math.min(range.endMinutes, startMinutes + totalMinutes);
+		const clippedDuration = Math.max(clippedEnd - clippedStart, 30);
 
 		return {
 			timeLabel: `${range.startTime} - ${range.endTime}`,
-			topPercent: ((startMinutes - BOARD_START_MINUTES) / BOARD_TOTAL_MINUTES) * 100,
-			heightPercent: (clippedDuration / BOARD_TOTAL_MINUTES) * 100,
+			topPercent: ((clippedStart - startMinutes) / totalMinutes) * 100,
+			heightPercent: (clippedDuration / totalMinutes) * 100,
 		};
 	}
 </script>
 
 <section
-	class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-border-subtle bg-surface shadow-card"
+	class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-border-subtle bg-surface shadow-card"
 >
-	<div class="grid h-full min-h-0 grid-cols-[70px_minmax(0,1fr)] grid-rows-[48px_minmax(0,1fr)]">
+	<div class="grid h-full min-h-0 grid-cols-[52px_minmax(0,1fr)] grid-rows-[40px_minmax(0,1fr)]">
 		<div class="border-r border-b border-border-subtle bg-surface"></div>
 
 		<div class="grid border-b border-border-subtle bg-surface" style={dayColumnsStyle}>
 			{#each days as day (day)}
 				<div
-					class="flex items-center justify-center border-r border-border-subtle px-2 text-sm font-semibold text-primary last:border-r-0"
+					class="flex items-center justify-center border-r border-border-subtle px-1 text-[11px] font-bold tracking-wide text-primary uppercase last:border-r-0 sm:text-xs"
 				>
 					{getDayLabel(day)}
 				</div>
@@ -70,8 +70,8 @@
 		<div class="grid border-r border-border-subtle bg-surface" style={rowsStyle}>
 			{#each boardHours as hour, index (hour)}
 				<div
-					class={`border-b border-border-subtle px-2 text-right text-[11px] text-secondary ${
-						index === boardHours.length - 1 ? 'pt-2 pb-2' : 'pt-2'
+					class={`border-b border-border-subtle px-1.5 text-right text-[10px] text-secondary ${
+						index === boardHours.length - 1 ? 'pt-1.5 pb-1.5' : 'pt-1.5'
 					}`}
 				>
 					<div

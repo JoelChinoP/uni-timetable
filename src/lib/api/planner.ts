@@ -1,22 +1,17 @@
-import type { PlannerDashboard } from '../types/planner';
+import { request } from './client';
+import type { PlannerData, SharedTimetable } from '../types/planner';
 
-const MOCK_PLANNER_ENDPOINT = '/mocks/planner-dashboard.json';
+export function getDashboard() {
+	return request<PlannerData>('/planner/dashboard');
+}
 
-export async function loadPlannerDashboard(): Promise<PlannerDashboard> {
-	const response = await fetch(MOCK_PLANNER_ENDPOINT);
-	if (!response.ok) {
-		throw new Error('Unable to load planner dashboard mock data.');
-	}
+export function createSharedTimetable(selection: Record<string, number>) {
+	return request<{ id: string }>('/shared', {
+		method: 'POST',
+		body: JSON.stringify({ selection }),
+	});
+}
 
-	const payload = (await response.json()) as PlannerDashboard;
-	return payload;
-
-	/*
-  const response = await fetch('/api/planner/dashboard');
-  if (!response.ok) {
-    throw new Error('Unable to load planner dashboard data.');
-  }
-
-  return (await response.json()) as PlannerDashboard;
-  */
+export function getSharedTimetable(id: string) {
+	return request<SharedTimetable>(`/shared/${id}`);
 }

@@ -71,7 +71,9 @@
 					>
 						{course.name}
 					</h2>
-					<p class="mt-3 max-w-2xl text-sm leading-6 text-secondary">{course.summary}</p>
+					{#if course.summary}
+						<p class="mt-3 max-w-2xl text-sm leading-6 text-secondary">{course.summary}</p>
+					{/if}
 				</div>
 
 				<button
@@ -97,17 +99,19 @@
 
 		<div class="flex flex-wrap gap-2 border-b border-border-subtle px-5 py-4 sm:px-6">
 			<span class="rounded-full bg-surface-muted px-3 py-1.5 text-sm text-secondary">
-				{course.teacher.fullName}
+				{course.teacher?.fullName ?? 'Docente por asignar'}
 			</span>
+			{#if course.credits}
+				<span class="rounded-full bg-surface-muted px-3 py-1.5 text-sm text-secondary">
+					{course.credits} créditos
+				</span>
+			{/if}
 			<span class="rounded-full bg-surface-muted px-3 py-1.5 text-sm text-secondary">
-				{course.credits} creditos
-			</span>
-			<span class="rounded-full bg-surface-muted px-3 py-1.5 text-sm text-secondary">
-				Ano {course.academicYear}
+				Año {course.academicYear} · {getModeLabel(course.type)}
 			</span>
 			{#if selectedGroup}
 				<span class="rounded-full bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent">
-					Seccion activa
+					Sección activa
 				</span>
 			{/if}
 		</div>

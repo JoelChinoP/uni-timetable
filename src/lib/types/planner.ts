@@ -8,24 +8,6 @@ export interface AcademicHour {
 	endTime: string;
 }
 
-export interface NavigationItem {
-	id: string;
-	label: string;
-	active: boolean;
-}
-
-export interface PlannerTab {
-	id: string;
-	label: string;
-	active: boolean;
-}
-
-export interface PlannerUser {
-	name: string;
-	initials: string;
-	avatarLabel: string;
-}
-
 export interface TeacherSummary {
 	id: number;
 	fullName: string;
@@ -44,7 +26,7 @@ export interface GroupSession {
 export interface CourseGroup {
 	id: number;
 	name: string;
-	status: 'recommended' | 'available';
+	classroomLabel: string;
 	sessions: GroupSession[];
 }
 
@@ -54,29 +36,35 @@ export interface Course {
 	name: string;
 	abbreviation: string;
 	summary: string;
-	credits: number;
-	academicYear: number;
+	credits: number | null;
 	color: string;
-	teacher: TeacherSummary;
+	type: SessionMode;
+	academicYear: number;
+	theoryCourseId: number | null;
+	teacher: TeacherSummary | null;
 	groups: CourseGroup[];
 }
 
-export interface PlannerDashboard {
+export interface PlannerData {
 	termLabel: string;
-	boardTitle: string;
-	boardSubtitle: string;
 	days: PlannerDay[];
 	academicHours: AcademicHour[];
-	navigation: NavigationItem[];
-	tabs: PlannerTab[];
-	user: PlannerUser;
 	courses: Course[];
-	selectedGroups: Record<string, number | null>;
+}
+
+export interface SharedTimetable {
+	id: string;
+	selection: Record<string, number>;
 }
 
 export interface SelectedCourseGroup {
 	course: Course;
 	group: CourseGroup;
+}
+
+export interface PlannerSummary {
+	selectedCourses: number;
+	conflictCount: number;
 }
 
 export interface PlannerEvent {
@@ -88,7 +76,7 @@ export interface PlannerEvent {
 	code: string;
 	title: string;
 	teacher: string;
-	credits: number;
+	credits: number | null;
 	day: PlannerDay;
 	startHourAcademic: number;
 	endHourAcademic: number;
@@ -99,12 +87,6 @@ export interface PlannerEvent {
 	lane: number;
 	laneCount: number;
 	conflictIds: string[];
-}
-
-export interface PlannerSummary {
-	selectedCourses: number;
-	weeklyHours: number;
-	conflictCount: number;
 }
 
 export interface PlannerConflict {

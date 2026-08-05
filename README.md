@@ -15,23 +15,26 @@ Go net/http (Vercel gru1)
 Supabase PostgreSQL (sa-east-1)
 ```
 
-La app tiene tres rutas principales: `/` muestra el tablero base, `/login` inicia sesión con Google
-y `/panel` es exclusivo para administradores. Go valida el ID token de Google, crea una cookie
-`HttpOnly` y consulta `app.users`; el primer correo de `ADMIN_EMAIL` se promueve a `ADMIN` al
-conectarse. Los usuarios registrados manualmente tienen rol `USER`.
+La app tiene cuatro rutas principales: `/` es el tablero semanal con la oferta real de la base,
+`/login` inicia sesión con Google, `/panel` gestiona cursos, grupos, aulas y docentes (usuarios
+registrados) y usuarios (solo `ADMIN`), y `/s/{id}` muestra un horario compartido en modo lectura.
+Go valida el ID token de Google, crea una cookie `HttpOnly` y consulta `app.users`; el primer correo
+de `ADMIN_EMAIL` se promueve a `ADMIN` al conectarse. Los usuarios registrados manualmente tienen
+rol `USER`.
 
 ## Estructura
 
 ```text
 .
 ├── src/
-│   ├── App.svelte               # Rutas /, /login y /panel
-│   └── lib/pages/               # Login y administración
+│   ├── App.svelte               # Rutas /, /login, /panel y /s/{id}
+│   └── lib/pages/               # Tablero, panel, compartido y login
 ├── public/                      # Archivos estáticos
 ├── scripts/dev.mjs              # Inicia Vite y Go
 ├── vercel.json                  # Proyecto web
 └── backend/
     ├── cmd/api/                 # Servidor net/http detectado por Vercel
+    ├── cmd/seed/                # Carga idempotente de la oferta 2026-B (JSON embebido)
     ├── internal/database/
     │   ├── schema.sql           # Bootstrap SQL para una base vacía
     │   ├── queries/             # SQL fuente de SQLC
@@ -42,6 +45,10 @@ conectarse. Los usuarios registrados manualmente tienen rol `USER`.
     ├── go.mod
     └── vercel.json              # Proyecto API, región y cron
 ```
+
+Las horas académicas viven en `app.academic_hours` (15 bloques editables) y el tablero las deriva
+de la base: si el periodo cambia huecos o inicio de clases, se actualizan las filas y nada más.
+Las sesiones referencian bloques por número (`start_hour_academic` + `duration_hours`).
 
 ## Requisitos
 
@@ -73,9 +80,9 @@ VITE_GOOGLE_CLIENT_ID=CLIENT_ID.apps.googleusercontent.com
 VITE_API_URL=
 ```
 
-`VITE_API_URL` vacío hace que desarrollo use el mismo origen de Vite, mientras sus proxies
-`/auth`, `/users` y `/api/*` se reenvían al backend. En producción sí debe contener la URL pública
-de la API, por ejemplo `https://api.midominio.com`.
+`VITE_API_URL` vacío hace que desarrollo use el mismo origen de Vite: el proxy reenvía `/auth`,
+`/users`, `/planner`, `/shared`, `/classrooms`, `/teachers`, `/courses` y `/groups` al backend.
+En producción sí debe contener la URL pública de la API, por ejemplo `https://api.midominio.com`.
 
 ```env
 DATABASE_URL=
@@ -83,11 +90,23 @@ GOOGLE_CLIENT_ID=CLIENT_ID.apps.googleusercontent.com
 FRONTEND_ORIGINS=http://127.0.0.1:5173
 ADMIN_EMAIL=jchinop@unsa.edu.pe
 COOKIE_SECURE=false
+TERM_LABEL=2026-B
 ```
 
+`TERM_LABEL` es el rótulo del periodo mostrado en el tablero; cámbialo al resembrar otro ciclo.
+
+```bash
+npm run db:seed   # carga la oferta 2026-B de Ing. de Sistemas (idempotente)
+```
+
+El seed usa `DATABASE_MIGRATION_URL` si existe y, si no, `DATABASE_URL`. Inserta carrera, aulas,
+cursos (teoría y laboratorio), grupos y sesiones desde el JSON oficial embebido; al repetirse omite
+lo ya cargado.
+
 `DATABASE_URL` puede quedar vacío para probar el frontend o login efímero: Go verifica Google y
-determina el rol desde `ADMIN_EMAIL`, pero `/users` devolverá `503` hasta configurar PostgreSQL.
-Para que la cookie sobreviva entre dominios distintos en producción, usa `COOKIE_SECURE=true`.
+determina el rol desde `ADMIN_EMAIL`, pero `/users`, el catálogo y el tablero devolverán `503`
+hasta configurar PostgreSQL. Para que la cookie sobreviva entre dominios distintos en producción,
+usa `COOKIE_SECURE=true`.
 
 Vite redirige `/api/*` al backend local quitando el prefijo. Por ejemplo,
 `http://127.0.0.1:5173/api/health` llega a `http://127.0.0.1:8080/health`.
@@ -106,16 +125,33 @@ docker run --rm -v "$PWD/backend:/src" -w /src sqlc/sqlc generate
 
 ## API Base
 
-| Método | Ruta                  | Respuesta                                        |
-| ------ | --------------------- | ------------------------------------------------ |
-| `GET`  | `/health`             | Proceso disponible, sin tocar PostgreSQL         |
-| `POST` | `/auth/login`         | Valida Google y crea cookie de sesión            |
-| `GET`  | `/auth/me`            | Devuelve la sesión vigente o `401`               |
-| `POST` | `/auth/logout`        | Borra cookie y sesión                            |
-| `GET`  | `/users`              | Lista usuarios; requiere `ADMIN`                 |
-| `POST` | `/users`              | Crea usuario `USER`; requiere `ADMIN`            |
-| `GET`  | `/ready`              | `204` si PostgreSQL responde; `503` en otro caso |
-| `GET`  | `/internal/keepalive` | Ejecuta `select 1` con autorización de cron      |
+| Método   | Ruta                  | Respuesta                                        |
+| -------- | --------------------- | ------------------------------------------------ |
+| `GET`    | `/health`             | Proceso disponible, sin tocar PostgreSQL         |
+| `POST`   | `/auth/login`         | Valida Google y crea cookie de sesión            |
+| `GET`    | `/auth/me`            | Devuelve la sesión vigente o `401`               |
+| `POST`   | `/auth/logout`        | Borra cookie y sesión                            |
+| `GET`    | `/users`              | Lista usuarios; requiere `ADMIN`                 |
+| `POST`   | `/users`              | Crea usuario `USER`; requiere `ADMIN`            |
+| `GET`    | `/planner/dashboard`  | Horas, cursos, grupos y sesiones de la carrera   |
+| `POST`   | `/shared`             | Crea enlace de horario compartido (id de 10)     |
+| `GET`    | `/shared/{id}`        | Devuelve la selección guardada del enlace        |
+| `GET`    | `/classrooms`         | Lista aulas (pública)                            |
+| `POST`   | `/classrooms`         | Crea aula; requiere usuario registrado           |
+| `DELETE` | `/classrooms/{id}`    | Elimina aula; requiere usuario registrado        |
+| `GET`    | `/teachers`           | Lista docentes (pública)                         |
+| `POST`   | `/teachers`           | Crea docente; requiere usuario registrado        |
+| `DELETE` | `/teachers/{id}`      | Elimina docente; requiere usuario registrado     |
+| `POST`   | `/courses`            | Crea curso; requiere usuario registrado          |
+| `DELETE` | `/courses/{id}`       | Elimina curso; requiere usuario registrado       |
+| `POST`   | `/groups`             | Crea grupo con sus sesiones; requiere registrado |
+| `DELETE` | `/groups/{id}`        | Elimina grupo; requiere usuario registrado       |
+| `GET`    | `/ready`              | `204` si PostgreSQL responde; `503` en otro caso |
+| `GET`    | `/internal/keepalive` | Ejecuta `select 1` con autorización de cron      |
+
+Los enlaces compartidos guardan la selección `{courseId: groupId}` en `app.shared_timetables` con un
+id aleatorio de 10 caracteres (`crypto/rand`), el patrón estándar de links cortos server-side: sin
+payloads en la URL, sin nada que inyectar.
 
 Las consultas de usuarios se declaran una vez en `internal/database/queries/users.sql`, se compilan
 con SQLC `v1.31.1` a código Go tipado y se ejecutan sobre el pool existente, usando el modo `Exec`
@@ -138,10 +174,11 @@ El pool se crea una vez por instancia, no abre una conexión durante el arranque
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/schema.sql
 ```
 
-Para una base creada antes de usuarios, aplica la migración incremental:
+Para una base creada antes de usuarios, aplica las migraciones incrementales:
 
 ```bash
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/001_create_users.sql
+psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/002_planner_release.sql
 ```
 
 `ADMIN_EMAIL` no se inserta como SQL estático: al autenticar ese correo con Google, la API hace un

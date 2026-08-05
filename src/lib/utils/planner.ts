@@ -1,7 +1,6 @@
 import type {
 	AcademicHour,
 	Course,
-	CourseGroup,
 	PlannerConflict,
 	PlannerDay,
 	PlannerEvent,
@@ -13,22 +12,29 @@ import type {
 const dayLabels: Record<PlannerDay, string> = {
 	MONDAY: 'Lunes',
 	TUESDAY: 'Martes',
-	WEDNESDAY: 'Miercoles',
+	WEDNESDAY: 'Miércoles',
 	THURSDAY: 'Jueves',
 	FRIDAY: 'Viernes',
-	SATURDAY: 'Sabado',
+	SATURDAY: 'Sábado',
 };
 
 const modeLabels: Record<SessionMode, string> = {
-	THEORY: 'Teorico',
-	LABORATORY: 'Practico',
+	THEORY: 'Teoría',
+	LABORATORY: 'Laboratorio',
 };
 
-export const BOARD_START_HOUR = 7;
-export const BOARD_END_HOUR = 21;
-export const BOARD_START_MINUTES = BOARD_START_HOUR * 60;
-export const BOARD_END_MINUTES = BOARD_END_HOUR * 60;
-export const BOARD_TOTAL_MINUTES = BOARD_END_MINUTES - BOARD_START_MINUTES;
+// ponytail: el rango del tablero siempre sale de las horas académicas de la BD; cambian por periodo sin tocar código.
+export function deriveBoardBounds(academicHours: AcademicHour[]) {
+	if (academicHours.length === 0) {
+		return { startHour: 7, endHour: 21 };
+	}
+	const starts = academicHours.map(({ startTime }) => toMinutes(startTime));
+	const ends = academicHours.map(({ endTime }) => toMinutes(endTime));
+	return {
+		startHour: Math.floor(Math.min(...starts) / 60),
+		endHour: Math.ceil(Math.max(...ends) / 60),
+	};
+}
 
 export function getDayLabel(day: PlannerDay) {
 	return dayLabels[day];
@@ -71,7 +77,7 @@ export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]):
 			sessionId: session.id,
 			code: course.code,
 			title: session.title,
-			teacher: course.teacher.fullName,
+			teacher: course.teacher?.fullName ?? 'Por asignar',
 			credits: course.credits,
 			day: session.day,
 			startHourAcademic: session.startHourAcademic,
@@ -157,30 +163,12 @@ export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]):
 
 export function buildPlannerSummary(
 	selectedCourseGroups: SelectedCourseGroup[],
-	academicHours: AcademicHour[],
 	conflicts: PlannerConflict[],
 ): PlannerSummary {
-	const weeklyMinutes = selectedCourseGroups.reduce((minutes, { group }) => {
-		return (
-			minutes +
-			group.sessions.reduce((sessionMinutes, session) => {
-				return (
-					sessionMinutes +
-					getSessionMinutes(session.startHourAcademic, session.durationHours, academicHours)
-				);
-			}, 0)
-		);
-	}, 0);
-
 	return {
 		selectedCourses: selectedCourseGroups.length,
-		weeklyHours: Number((weeklyMinutes / 60).toFixed(1)),
 		conflictCount: conflicts.length,
 	};
-}
-
-export function formatSummaryHours(hours: number) {
-	return `${hours.toFixed(1)} h`;
 }
 
 export function getAcademicTimeRange(
@@ -212,7 +200,7 @@ export function formatTimeRange(
 ) {
 	const range = getAcademicTimeRange(startHourAcademic, durationHours, academicHours);
 	if (!range) {
-		return 'Schedule unavailable';
+		return 'Horario no disponible';
 	}
 
 	return `${range.startTime} - ${range.endTime}`;
@@ -233,27 +221,6 @@ export function matchesCourseSearch(course: Course, searchQuery: string) {
 		course.name.toLowerCase().includes(normalizedQuery) ||
 		course.summary.toLowerCase().includes(normalizedQuery)
 	);
-}
-
-export function getGroupButtonTone(group: CourseGroup, selectedGroupId: number | null) {
-	if (group.id === selectedGroupId) {
-		return 'selected';
-	}
-
-	return group.status === 'recommended' ? 'recommended' : 'default';
-}
-
-function getSessionMinutes(
-	startHourAcademic: number,
-	durationHours: number,
-	academicHours: AcademicHour[],
-) {
-	const range = getAcademicTimeRange(startHourAcademic, durationHours, academicHours);
-	if (!range) {
-		return durationHours * 50;
-	}
-
-	return range.endMinutes - range.startMinutes;
 }
 
 function toMinutes(timeValue: string) {
