@@ -1,194 +1,111 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 
-	import CourseDetailModal from './lib/components/CourseDetailModal.svelte';
-	import CourseExplorer from './lib/components/CourseExplorer.svelte';
-	import HeaderBar from './lib/components/HeaderBar.svelte';
-	import PlannerSummaryBar from './lib/components/PlannerSummaryBar.svelte';
-	import WeeklyPlanner from './lib/components/WeeklyPlanner.svelte';
-	import { loadPlannerDashboard } from './lib/api/planner';
-	import { theme, type ThemeMode } from './lib/stores/theme';
-	import type { Course, PlannerDashboard, PlannerEvent, PlannerSummary } from './lib/types/planner';
-	import {
-		buildPlannerEvents,
-		buildPlannerSummary,
-		getSelectedCourseGroups,
-		matchesCourseSearch,
-	} from './lib/utils/planner';
+	import TopBar from './lib/components/TopBar.svelte';
+	import LoginPage from './lib/pages/LoginPage.svelte';
+	import AdminPanel from './lib/pages/AdminPanel.svelte';
+	import { loadSession, logoutSession } from './lib/api/auth';
+	import type { AuthUser } from './lib/types/auth';
 
-	const emptySummary: PlannerSummary = {
-		selectedCourses: 0,
-		weeklyHours: 0,
-		conflictCount: 0,
-	};
+	let path = window.location.pathname;
+	let user: AuthUser | null = null;
+	let sessionKnown = false;
 
-	let dashboard: PlannerDashboard | null = null;
-	let isLoading = true;
-	let errorMessage = '';
-	let searchQuery = '';
-	let activeCourse: Course | null = null;
-	let focusedSessionId: number | null = null;
-	let themeMode: ThemeMode = 'dark';
+	function navigate(nextPath: string) {
+		window.history.pushState({}, '', nextPath);
+		path = nextPath;
+	}
 
-	const unsubscribe = theme.subscribe((value) => {
-		themeMode = value;
-	});
+	function onPopState() {
+		path = window.location.pathname;
+	}
 
-	onDestroy(unsubscribe);
+	async function logoutUser() {
+		user = null;
+		try {
+			await logoutSession();
+		} catch {
+			// ponytail: logout must still clear the UI when the API is unavailable.
+		}
+		navigate('/');
+	}
 
 	onMount(async () => {
+		window.addEventListener('popstate', onPopState);
 		try {
-			dashboard = await loadPlannerDashboard();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			user = await loadSession();
+		} catch {
+			user = null;
 		} finally {
-			isLoading = false;
+			sessionKnown = true;
 		}
 	});
 
-	$: courses = dashboard?.courses ?? [];
-	$: selectedGroups = dashboard?.selectedGroups ?? {};
-	$: filteredCourses = courses.filter((course) => matchesCourseSearch(course, searchQuery));
-	$: selectedCourseGroups = getSelectedCourseGroups(courses, selectedGroups);
-	$: plannerState = buildPlannerEvents(selectedCourseGroups);
-	$: plannerEvents = plannerState.events;
-	$: plannerConflicts = plannerState.conflicts;
-	$: summary = dashboard
-		? buildPlannerSummary(selectedCourseGroups, dashboard.academicHours, plannerConflicts)
-		: emptySummary;
-	$: activeCourseId = activeCourse?.id ?? null;
-	$: activeSelectedGroup =
-		activeCourseId == null
-			? null
-			: (activeCourse?.groups.find(
-					(group) => group.id === selectedGroups[String(activeCourseId)],
-				) ?? null);
-
-	function handleGroupToggle(courseId: number, groupId: number) {
-		if (!dashboard) {
-			return;
-		}
-
-		const key = String(courseId);
-		const currentGroupId = dashboard.selectedGroups[key];
-
-		dashboard = {
-			...dashboard,
-			selectedGroups: {
-				...dashboard.selectedGroups,
-				[key]: currentGroupId === groupId ? null : groupId,
-			},
-		};
-
-		if (activeCourse?.id === courseId) {
-			focusedSessionId = null;
-		}
-	}
-
-	function handleSearchChange(value: string) {
-		searchQuery = value;
-	}
-
-	function openCourseDetails(course: Course, sessionId: number | null = null) {
-		activeCourse = course;
-		focusedSessionId = sessionId;
-	}
-
-	function openEventDetails(event: PlannerEvent) {
-		const course = courses.find(({ id }) => id === event.courseId);
-		if (course) {
-			openCourseDetails(course, event.sessionId);
-		}
-	}
-
-	function closeCourseDetails() {
-		activeCourse = null;
-		focusedSessionId = null;
-	}
+	onDestroy(() => window.removeEventListener('popstate', onPopState));
 </script>
 
-{#if isLoading}
-	<div class="flex min-h-full items-center justify-center px-4 py-8 sm:px-6">
-		<div
-			class="w-full max-w-2xl rounded-[32px] border border-border-subtle bg-panel p-8 shadow-panel backdrop-blur-xl"
-		>
-			<span
-				class="inline-flex rounded-full bg-accent-soft px-4 py-1 text-[11px] font-extrabold tracking-[0.24em] text-accent uppercase"
+{#if path === '/login'}
+	<LoginPage {user} onSigned={(nextUser) => (user = nextUser)} onNavigate={navigate} />
+{:else if path === '/panel'}
+	{#if sessionKnown}
+		<AdminPanel {user} onNavigate={navigate} onLogout={logoutUser} />
+	{:else}
+		<div class="grid min-h-dvh place-items-center text-secondary">Comprobando sesión…</div>
+	{/if}
+{:else}
+	<div class="min-h-dvh">
+		<TopBar {user} busy={!sessionKnown} onNavigate={navigate} onLogout={logoutUser} />
+		<main class="mx-auto grid w-full max-w-7xl flex-1 gap-4 p-4 sm:p-6 lg:grid-cols-[3fr_1fr]">
+			<section
+				class="min-h-[28rem] rounded-[28px] border border-border-subtle bg-panel p-5 shadow-panel backdrop-blur-xl lg:min-h-[calc(100dvh-7rem)]"
 			>
-				Planner
-			</span>
-			<h1 class="mt-5 font-display text-4xl leading-none text-primary sm:text-5xl">
-				Preparando tu horario.
-			</h1>
-			<p class="mt-3 max-w-xl text-sm leading-6 text-secondary sm:text-base">
-				Cargando cursos, secciones y bloques semanales para dibujar el tablero.
-			</p>
-		</div>
-	</div>
-{:else if errorMessage}
-	<div class="flex min-h-full items-center justify-center px-4 py-8 sm:px-6">
-		<div
-			class="w-full max-w-2xl rounded-[32px] border border-warning/20 bg-panel p-8 shadow-panel backdrop-blur-xl"
-		>
-			<span
-				class="inline-flex rounded-full bg-warning-soft px-4 py-1 text-[11px] font-extrabold tracking-[0.24em] text-warning uppercase"
+				<p class="text-xs font-extrabold tracking-[0.26em] text-accent uppercase">
+					Tablero principal
+				</p>
+				<h1 class="mt-3 font-display text-4xl font-bold text-primary sm:text-5xl">
+					Prepara tu horario
+				</h1>
+				<p class="mt-4 max-w-lg text-sm leading-6 text-secondary sm:text-base">
+					Este espacio queda listo para integrar el planificador después de la autenticación.
+				</p>
+				<div
+					class="mt-6 grid min-h-72 place-items-center rounded-[24px] border border-dashed border-border-strong bg-surface-muted text-sm font-bold text-secondary"
+				>
+					Tablero de cursos
+				</div>
+			</section>
+
+			<aside
+				class="min-h-80 rounded-[28px] border border-border-subtle bg-panel p-5 shadow-panel backdrop-blur-xl lg:min-h-[calc(100dvh-7rem)]"
 			>
-				Error
-			</span>
-			<h1 class="mt-5 font-display text-4xl leading-none text-primary sm:text-5xl">
-				No pudimos cargar el planner.
-			</h1>
-			<p class="mt-3 max-w-xl text-sm leading-6 text-secondary sm:text-base">{errorMessage}</p>
-		</div>
-	</div>
-{:else if dashboard}
-	<div class="flex min-h-screen flex-col overflow-hidden">
-		<HeaderBar
-			navigation={dashboard.navigation}
-			user={dashboard.user}
-			{themeMode}
-			onToggleTheme={() => theme.toggle()}
-		/>
-
-		<main
-			class="mx-auto flex h-[calc(100vh-60px)] min-h-0 w-full max-w-[1880px] flex-1 flex-col px-3 pt-3 pb-3 sm:px-4 xl:px-6"
-		>
-			<div
-				class="grid min-h-0 flex-1 gap-3 xl:grid-cols-[310px_minmax(0,1fr)] 2xl:grid-cols-[330px_minmax(0,1fr)]"
-			>
-				<CourseExplorer
-					termLabel={dashboard.termLabel}
-					{searchQuery}
-					courses={filteredCourses}
-					{selectedGroups}
-					academicHours={dashboard.academicHours}
-					onSearchChange={handleSearchChange}
-					onToggleGroup={handleGroupToggle}
-					onOpenDetails={openCourseDetails}
-				/>
-
-				<section class="flex min-h-0 flex-col gap-2">
-					<WeeklyPlanner
-						days={dashboard.days}
-						academicHours={dashboard.academicHours}
-						events={plannerEvents}
-						onOpenEvent={openEventDetails}
-					/>
-
-					<PlannerSummaryBar {summary} />
-				</section>
-			</div>
+				<p class="text-xs font-extrabold tracking-[0.26em] text-accent uppercase">Resumen</p>
+				<h2 class="mt-3 font-display text-2xl font-bold text-primary">Estado</h2>
+				{#if user}
+					<div class="mt-5 rounded-[22px] bg-surface-muted p-4">
+						<p class="truncate font-bold text-primary">{user.displayName}</p>
+						<p class="mt-1 truncate text-sm text-secondary">{user.email}</p>
+						<span
+							class="mt-3 inline-flex rounded-full bg-accent-soft px-3 py-1 text-xs font-extrabold text-accent"
+						>
+							{user.role}
+						</span>
+					</div>
+					{#if user.role === 'ADMIN'}
+						<button
+							class="mt-4 w-full rounded-[18px] bg-accent-strong px-4 py-3 text-sm font-bold text-white"
+							type="button"
+							on:click={() => navigate('/panel')}
+						>
+							Gestionar usuarios
+						</button>
+					{/if}
+				{:else}
+					<p class="mt-5 text-sm leading-6 text-secondary">
+						No has iniciado sesión. Usa Google para conectar tu cuenta cuando necesites administrar
+						o guardar información.
+					</p>
+				{/if}
+			</aside>
 		</main>
-
-		{#if activeCourse}
-			<CourseDetailModal
-				course={activeCourse}
-				selectedGroup={activeSelectedGroup}
-				academicHours={dashboard.academicHours}
-				{focusedSessionId}
-				events={plannerEvents.filter((event) => event.courseId === activeCourseId)}
-				onClose={closeCourseDetails}
-			/>
-		{/if}
 	</div>
 {/if}
