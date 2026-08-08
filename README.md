@@ -90,6 +90,7 @@ GOOGLE_CLIENT_ID=CLIENT_ID.apps.googleusercontent.com
 FRONTEND_ORIGINS=http://127.0.0.1:5173
 ADMIN_EMAIL=jchinop@unsa.edu.pe
 COOKIE_SECURE=false
+SESSION_SECRET=un-secreto-aleatorio-de-al-menos-32-caracteres
 TERM_LABEL=2026-B
 ```
 
@@ -106,7 +107,8 @@ lo ya cargado.
 `DATABASE_URL` puede quedar vacío para probar el frontend o login efímero: Go verifica Google y
 determina el rol desde `ADMIN_EMAIL`, pero `/users`, el catálogo y el tablero devolverán `503`
 hasta configurar PostgreSQL. Para que la cookie sobreviva entre dominios distintos en producción,
-usa `COOKIE_SECURE=true`.
+usa `COOKIE_SECURE=true`. La sesión dura una hora y se firma con `SESSION_SECRET`, por lo que sigue
+siendo válida entre instancias y reinicios sin almacenar estado en memoria.
 
 Vite redirige `/api/*` al backend local quitando el prefijo. Por ejemplo,
 `http://127.0.0.1:5173/api/health` llega a `http://127.0.0.1:8080/health`.
@@ -138,20 +140,24 @@ docker run --rm -v "$PWD/backend:/src" -w /src sqlc/sqlc generate
 | `GET`    | `/shared/{id}`        | Devuelve la selección guardada del enlace        |
 | `GET`    | `/classrooms`         | Lista aulas (pública)                            |
 | `POST`   | `/classrooms`         | Crea aula; requiere usuario registrado           |
+| `PUT`    | `/classrooms/{id}`    | Edita aula; requiere usuario registrado          |
 | `DELETE` | `/classrooms/{id}`    | Elimina aula; requiere usuario registrado        |
 | `GET`    | `/teachers`           | Lista docentes (pública)                         |
 | `POST`   | `/teachers`           | Crea docente; requiere usuario registrado        |
+| `PUT`    | `/teachers/{id}`      | Edita docente; requiere usuario registrado       |
 | `DELETE` | `/teachers/{id}`      | Elimina docente; requiere usuario registrado     |
 | `POST`   | `/courses`            | Crea curso; requiere usuario registrado          |
+| `PUT`    | `/courses/{id}`       | Edita curso; requiere usuario registrado         |
 | `DELETE` | `/courses/{id}`       | Elimina curso; requiere usuario registrado       |
 | `POST`   | `/groups`             | Crea grupo con sus sesiones; requiere registrado |
+| `PUT`    | `/groups/{id}`        | Edita grupo y reemplaza sus sesiones             |
 | `DELETE` | `/groups/{id}`        | Elimina grupo; requiere usuario registrado       |
 | `GET`    | `/ready`              | `204` si PostgreSQL responde; `503` en otro caso |
 | `GET`    | `/internal/keepalive` | Ejecuta `select 1` con autorización de cron      |
 
-Los enlaces compartidos guardan la selección `{courseId: groupId}` en `app.shared_timetables` con un
-id aleatorio de 10 caracteres (`crypto/rand`), el patrón estándar de links cortos server-side: sin
-payloads en la URL, sin nada que inyectar.
+Los enlaces compartidos guardan una copia de la selección `{courseId: groupId}` en
+`app.shared_timetables` con un id aleatorio de 10 caracteres (`crypto/rand`). No guardan ni dependen
+del usuario emisor; el receptor decide si solo revisa el horario o lo adopta en su navegador.
 
 Las consultas de usuarios se declaran una vez en `internal/database/queries/users.sql`, se compilan
 con SQLC `v1.31.1` a código Go tipado y se ejecutan sobre el pool existente, usando el modo `Exec`
@@ -179,6 +185,7 @@ Para una base creada antes de usuarios, aplica las migraciones incrementales:
 ```bash
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/001_create_users.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/002_planner_release.sql
+psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/003_classroom_overlap.sql
 ```
 
 `ADMIN_EMAIL` no se inserta como SQL estático: al autenticar ese correo con Google, la API hace un
@@ -254,6 +261,7 @@ Y en el proyecto API, para **Production**:
 | `FRONTEND_ORIGINS` | Origen exacto del frontend, sin barra final   |
 | `ADMIN_EMAIL`      | Correo promovido a `ADMIN` en su primer login |
 | `COOKIE_SECURE`    | `true` en HTTPS para `SameSite=None; Secure`  |
+| `SESSION_SECRET`   | Secreto aleatorio de al menos 32 caracteres   |
 | `CRON_SECRET`      | Secreto aleatorio de al menos 16 caracteres   |
 
 Vercel define `PORT` automáticamente. Para desarrollo local, su valor predeterminado es `8080`.

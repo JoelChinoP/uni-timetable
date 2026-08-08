@@ -17,13 +17,16 @@ import (
 	"github.com/JoelChinoP/uni-timetable/backend/internal/database"
 )
 
-// Integración real contra PostgreSQL: TEST_DATABASE_URL debe apuntar a una base
-// volátil (docker). Se omite cuando no está definida.
+// Integración real contra PostgreSQL. El esquema original se aparta y restaura
+// exactamente al finalizar, aun cuando una prueba falle.
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("TEST_DATABASE_URL no definida")
+	}
+	if os.Getenv("ALLOW_DESTRUCTIVE_TESTS") != "1" {
+		t.Skip("define ALLOW_DESTRUCTIVE_TESTS=1 para ejecutar integración")
 	}
 
 	config, err := pgxpool.ParseConfig(databaseURL)
@@ -45,9 +48,35 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, err := pool.Exec(ctx, "DROP SCHEMA IF EXISTS app CASCADE"); err != nil {
+	var backupExists bool
+	if err := pool.QueryRow(ctx, "SELECT to_regnamespace('app_test_backup') IS NOT NULL").Scan(&backupExists); err != nil {
 		t.Fatal(err)
 	}
+	if backupExists {
+		t.Fatal("app_test_backup existe; restaúralo manualmente antes de ejecutar las pruebas")
+	}
+	var appExists bool
+	if err := pool.QueryRow(ctx, "SELECT to_regnamespace('app') IS NOT NULL").Scan(&appExists); err != nil {
+		t.Fatal(err)
+	}
+	if appExists {
+		if _, err := pool.Exec(ctx, "ALTER SCHEMA app RENAME TO app_test_backup"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cleanupCancel()
+		if _, err := pool.Exec(cleanupCtx, "DROP SCHEMA IF EXISTS app CASCADE"); err != nil {
+			t.Errorf("limpiar esquema de pruebas: %v", err)
+			return
+		}
+		if appExists {
+			if _, err := pool.Exec(cleanupCtx, "ALTER SCHEMA app_test_backup RENAME TO app"); err != nil {
+				t.Errorf("restaurar esquema original: %v", err)
+			}
+		}
+	})
 	if _, err := pool.Exec(ctx, string(schema)); err != nil {
 		t.Fatalf("schema bootstrap: %v", err)
 	}
@@ -121,6 +150,10 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	if response.Code != http.StatusConflict {
 		t.Fatalf("classroom duplicate: %d, want 409", response.Code)
 	}
+	response = doJSON(handler, "PUT", "/classrooms/1", `{"code":"Aula 999A","type":"THEORY","floor":3,"capacity":35}`, cookie)
+	if response.Code != http.StatusOK {
+		t.Fatalf("update classroom: %d %s", response.Code, response.Body.String())
+	}
 
 	response = doJSON(handler, "POST", "/classrooms", `{"code":"X","type":"GYM"}`, cookie)
 	if response.Code != http.StatusBadRequest {
@@ -135,9 +168,13 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	if createTeacherAgain.Code != http.StatusCreated {
 		t.Fatalf("teacher re-register must be idempotent: %d", createTeacherAgain.Code)
 	}
+	response = doJSON(handler, "PUT", "/teachers/1", `{"name":"Ada","lastName":"Byron"}`, cookie)
+	if response.Code != http.StatusOK {
+		t.Fatalf("update teacher: %d %s", response.Code, response.Body.String())
+	}
 
 	response = doJSON(handler, "GET", "/teachers", "", nil)
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Lovelace") {
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Byron") {
 		t.Fatalf("teachers list: %d %s", response.Code, response.Body.String())
 	}
 
@@ -146,6 +183,11 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	if response.Code != http.StatusCreated {
 		t.Fatalf("create course: %d %s", response.Code, response.Body.String())
 	}
+	response = doJSON(handler, "PUT", "/courses/1",
+		`{"name":"Cálculo I","abbreviation":"CALC","type":"THEORY","academicYear":1,"teacherId":1}`, cookie)
+	if response.Code != http.StatusOK {
+		t.Fatalf("update course: %d %s", response.Code, response.Body.String())
+	}
 
 	groupBody := `{"courseId":1,"name":"A","classroomId":1,"sessions":[
 		{"day":"MONDAY","startHourAcademic":1,"durationHours":2},
@@ -153,6 +195,12 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	response = doJSON(handler, "POST", "/groups", groupBody, cookie)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("create group: %d %s", response.Code, response.Body.String())
+	}
+	roomConflictBody := `{"courseId":1,"name":"B","classroomId":1,"sessions":[
+		{"day":"MONDAY","startHourAcademic":2,"durationHours":2}]}`
+	response = doJSON(handler, "POST", "/groups", roomConflictBody, cookie)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("classroom overlap: %d %s, want 409", response.Code, response.Body.String())
 	}
 
 	response = doJSON(handler, "POST", "/groups", groupBody, cookie)
@@ -220,13 +268,20 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	if payload.Data.AcademicHours[1].EndTime != "08:40" {
 		t.Fatalf("hora 2 corregida = %s, want 08:40", payload.Data.AcademicHours[1].EndTime)
 	}
-	if len(payload.Data.Courses) != 2 || len(payload.Data.Courses[0].Groups) != 1 {
+	if len(payload.Data.Courses) != 2 {
 		t.Fatalf("courses = %+v", payload.Data.Courses)
 	}
 	if got := payload.Data.Days; fmt.Sprint(got) != "[MONDAY WEDNESDAY]" {
 		t.Fatalf("days derivados = %v", got)
 	}
-	group := payload.Data.Courses[0].Groups[0]
+	var theoryGroups = payload.Data.Courses[0].Groups
+	if payload.Data.Courses[0].Type != "THEORY" {
+		theoryGroups = payload.Data.Courses[1].Groups
+	}
+	if len(theoryGroups) != 1 {
+		t.Fatalf("theory groups = %+v", theoryGroups)
+	}
+	group := theoryGroups[0]
 	if group.Name != "A" || len(group.Sessions) != 2 {
 		t.Fatalf("group = %+v", group)
 	}

@@ -148,18 +148,17 @@ func (q *Queries) CreateGroupSession(ctx context.Context, arg CreateGroupSession
 }
 
 const createSharedTimetable = `-- name: CreateSharedTimetable :exec
-INSERT INTO app.shared_timetables (id, selection, created_by)
-VALUES ($1, $2::text::jsonb, $3)
+INSERT INTO app.shared_timetables (id, selection)
+VALUES ($1, $2::text::jsonb)
 `
 
 type CreateSharedTimetableParams struct {
-	ID        string
-	Column2   string
-	CreatedBy pgtype.Int4
+	ID      string
+	Column2 string
 }
 
 func (q *Queries) CreateSharedTimetable(ctx context.Context, arg CreateSharedTimetableParams) error {
-	_, err := q.db.Exec(ctx, createSharedTimetable, arg.ID, arg.Column2, arg.CreatedBy)
+	_, err := q.db.Exec(ctx, createSharedTimetable, arg.ID, arg.Column2)
 	return err
 }
 
@@ -199,6 +198,15 @@ func (q *Queries) DeleteGroup(ctx context.Context, id int32) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const deleteGroupSessions = `-- name: DeleteGroupSessions :exec
+DELETE FROM app.schedule WHERE id_group = $1
+`
+
+func (q *Queries) DeleteGroupSessions(ctx context.Context, idGroup int32) error {
+	_, err := q.db.Exec(ctx, deleteGroupSessions, idGroup)
+	return err
+}
+
 const deleteTeacher = `-- name: DeleteTeacher :execrows
 DELETE FROM app.teachers WHERE id = $1
 `
@@ -212,7 +220,7 @@ func (q *Queries) DeleteTeacher(ctx context.Context, id int32) (int64, error) {
 }
 
 const getClassroomType = `-- name: GetClassroomType :one
-SELECT type FROM app.classrooms WHERE id = $1
+SELECT type FROM app.classrooms WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetClassroomType(ctx context.Context, id int32) (AppModeType, error) {
@@ -241,6 +249,25 @@ func (q *Queries) GetCourseMeta(ctx context.Context, id int32) (GetCourseMetaRow
 	return i, err
 }
 
+const getGroupMeta = `-- name: GetGroupMeta :one
+SELECT g.id_course, c.type
+FROM app.groups g
+JOIN app.courses c ON c.id = g.id_course
+WHERE g.id = $1
+`
+
+type GetGroupMetaRow struct {
+	IDCourse int32
+	Type     AppModeType
+}
+
+func (q *Queries) GetGroupMeta(ctx context.Context, id int32) (GetGroupMetaRow, error) {
+	row := q.db.QueryRow(ctx, getGroupMeta, id)
+	var i GetGroupMetaRow
+	err := row.Scan(&i.IDCourse, &i.Type)
+	return i, err
+}
+
 const getSharedTimetable = `-- name: GetSharedTimetable :one
 SELECT selection FROM app.shared_timetables WHERE id = $1
 `
@@ -250,6 +277,43 @@ func (q *Queries) GetSharedTimetable(ctx context.Context, id string) ([]byte, er
 	var selection []byte
 	err := row.Scan(&selection)
 	return selection, err
+}
+
+const getTheoryCourseMeta = `-- name: GetTheoryCourseMeta :one
+SELECT c.type, cr.code AS career_code
+FROM app.courses c
+JOIN app.careers cr ON cr.id = c.id_career
+WHERE c.id = $1
+`
+
+type GetTheoryCourseMetaRow struct {
+	Type       AppModeType
+	CareerCode string
+}
+
+func (q *Queries) GetTheoryCourseMeta(ctx context.Context, id int32) (GetTheoryCourseMetaRow, error) {
+	row := q.db.QueryRow(ctx, getTheoryCourseMeta, id)
+	var i GetTheoryCourseMetaRow
+	err := row.Scan(&i.Type, &i.CareerCode)
+	return i, err
+}
+
+const groupBelongsToCourse = `-- name: GroupBelongsToCourse :one
+SELECT EXISTS(
+  SELECT 1 FROM app.groups WHERE id = $1 AND id_course = $2
+)
+`
+
+type GroupBelongsToCourseParams struct {
+	ID       int32
+	IDCourse int32
+}
+
+func (q *Queries) GroupBelongsToCourse(ctx context.Context, arg GroupBelongsToCourseParams) (bool, error) {
+	row := q.db.QueryRow(ctx, groupBelongsToCourse, arg.ID, arg.IDCourse)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const linkTeacherToCareer = `-- name: LinkTeacherToCareer :exec
@@ -343,6 +407,155 @@ func (q *Queries) ListTeachers(ctx context.Context, code string) ([]ListTeachers
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateClassroom = `-- name: UpdateClassroom :one
+UPDATE app.classrooms
+SET code = $2, type = $3, floor = $4, capacity = $5
+WHERE id = $1
+RETURNING id, code, type, floor, capacity
+`
+
+type UpdateClassroomParams struct {
+	ID       int32
+	Code     string
+	Type     AppModeType
+	Floor    pgtype.Int2
+	Capacity pgtype.Int2
+}
+
+type UpdateClassroomRow struct {
+	ID       int32
+	Code     string
+	Type     AppModeType
+	Floor    pgtype.Int2
+	Capacity pgtype.Int2
+}
+
+func (q *Queries) UpdateClassroom(ctx context.Context, arg UpdateClassroomParams) (UpdateClassroomRow, error) {
+	row := q.db.QueryRow(ctx, updateClassroom,
+		arg.ID,
+		arg.Code,
+		arg.Type,
+		arg.Floor,
+		arg.Capacity,
+	)
+	var i UpdateClassroomRow
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Type,
+		&i.Floor,
+		&i.Capacity,
+	)
+	return i, err
+}
+
+const updateCourse = `-- name: UpdateCourse :one
+UPDATE app.courses
+SET code = $2,
+    name = $3,
+    abbreviation = $4,
+    credits = $5,
+    color = $6,
+    id_course_theory = $7,
+    academic_year = $8,
+    id_teacher = $9
+WHERE id = $1
+RETURNING id, code, name
+`
+
+type UpdateCourseParams struct {
+	ID             int32
+	Code           string
+	Name           string
+	Abbreviation   string
+	Credits        pgtype.Int2
+	Color          string
+	IDCourseTheory pgtype.Int4
+	AcademicYear   int16
+	IDTeacher      pgtype.Int4
+}
+
+type UpdateCourseRow struct {
+	ID   int32
+	Code string
+	Name string
+}
+
+func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (UpdateCourseRow, error) {
+	row := q.db.QueryRow(ctx, updateCourse,
+		arg.ID,
+		arg.Code,
+		arg.Name,
+		arg.Abbreviation,
+		arg.Credits,
+		arg.Color,
+		arg.IDCourseTheory,
+		arg.AcademicYear,
+		arg.IDTeacher,
+	)
+	var i UpdateCourseRow
+	err := row.Scan(&i.ID, &i.Code, &i.Name)
+	return i, err
+}
+
+const updateGroup = `-- name: UpdateGroup :one
+UPDATE app.groups
+SET code = $2, name = $3, id_classroom = $4
+WHERE id = $1
+RETURNING id, code, name
+`
+
+type UpdateGroupParams struct {
+	ID          int32
+	Code        string
+	Name        string
+	IDClassroom pgtype.Int4
+}
+
+type UpdateGroupRow struct {
+	ID   int32
+	Code string
+	Name string
+}
+
+func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (UpdateGroupRow, error) {
+	row := q.db.QueryRow(ctx, updateGroup,
+		arg.ID,
+		arg.Code,
+		arg.Name,
+		arg.IDClassroom,
+	)
+	var i UpdateGroupRow
+	err := row.Scan(&i.ID, &i.Code, &i.Name)
+	return i, err
+}
+
+const updateTeacher = `-- name: UpdateTeacher :one
+UPDATE app.teachers
+SET name = $2, last_name = $3
+WHERE id = $1
+RETURNING id, name, last_name
+`
+
+type UpdateTeacherParams struct {
+	ID       int32
+	Name     string
+	LastName string
+}
+
+type UpdateTeacherRow struct {
+	ID       int32
+	Name     string
+	LastName string
+}
+
+func (q *Queries) UpdateTeacher(ctx context.Context, arg UpdateTeacherParams) (UpdateTeacherRow, error) {
+	row := q.db.QueryRow(ctx, updateTeacher, arg.ID, arg.Name, arg.LastName)
+	var i UpdateTeacherRow
+	err := row.Scan(&i.ID, &i.Name, &i.LastName)
+	return i, err
 }
 
 const upsertTeacher = `-- name: UpsertTeacher :one

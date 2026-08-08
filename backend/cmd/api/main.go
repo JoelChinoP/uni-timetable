@@ -24,6 +24,7 @@ type routeConfig struct {
 	adminEmail     string
 	allowedOrigins []string
 	secureCookies  bool
+	sessionSecret  string
 	sessions       *sessionStore
 }
 
@@ -39,6 +40,12 @@ func main() {
 		port = "8080"
 	}
 
+	secureCookies := os.Getenv("COOKIE_SECURE") == "true"
+	sessionSecret := strings.TrimSpace(os.Getenv("SESSION_SECRET"))
+	if secureCookies && len(sessionSecret) < 32 {
+		log.Fatal("SESSION_SECRET must contain at least 32 characters in production")
+	}
+
 	server := &http.Server{
 		Addr: ":" + port,
 		Handler: routes(routeConfig{
@@ -47,7 +54,8 @@ func main() {
 			googleVerifier: newGoogleVerifier(os.Getenv("GOOGLE_CLIENT_ID")),
 			adminEmail:     normalizeEmail(os.Getenv("ADMIN_EMAIL")),
 			allowedOrigins: originsFromEnv(os.Getenv("FRONTEND_ORIGINS")),
-			secureCookies:  os.Getenv("COOKIE_SECURE") == "true",
+			secureCookies:  secureCookies,
+			sessionSecret:  sessionSecret,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -110,7 +118,7 @@ func routes(config routeConfig) http.Handler {
 	}
 	sessions := config.sessions
 	if sessions == nil {
-		sessions = newSessionStore()
+		sessions = newSessionStore(config.sessionSecret)
 	}
 	auth := &authHandler{
 		queries:    queries,
@@ -137,18 +145,22 @@ func routes(config routeConfig) http.Handler {
 	}
 	planner := &plannerHandler{queries: queries, termLabel: termLabel}
 	catalog := &catalogHandler{queries: queries, db: config.db, auth: auth}
-	shared := &sharedHandler{queries: queries, auth: auth}
+	shared := &sharedHandler{queries: queries}
 
 	mux.HandleFunc("GET /planner/dashboard", planner.dashboard)
 	mux.HandleFunc("/shared", shared.shared)
 	mux.HandleFunc("GET /shared/{id}", shared.getShared)
 	mux.HandleFunc("/classrooms", catalog.classrooms)
+	mux.HandleFunc("PUT /classrooms/{id}", catalog.updateClassroom)
 	mux.HandleFunc("DELETE /classrooms/{id}", catalog.deleteClassroom)
 	mux.HandleFunc("/teachers", catalog.teachers)
+	mux.HandleFunc("PUT /teachers/{id}", catalog.updateTeacher)
 	mux.HandleFunc("DELETE /teachers/{id}", catalog.deleteTeacher)
 	mux.HandleFunc("POST /courses", catalog.courses)
+	mux.HandleFunc("PUT /courses/{id}", catalog.updateCourse)
 	mux.HandleFunc("DELETE /courses/{id}", catalog.deleteCourse)
 	mux.HandleFunc("POST /groups", catalog.groups)
+	mux.HandleFunc("PUT /groups/{id}", catalog.updateGroup)
 	mux.HandleFunc("DELETE /groups/{id}", catalog.deleteGroup)
 
 	mux.HandleFunc("GET /ready", func(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +223,7 @@ func withCORS(next http.Handler, origins []string) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Add("Vary", "Origin")
 
 		if r.Method == http.MethodOptions {

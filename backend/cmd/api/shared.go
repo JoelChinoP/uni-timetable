@@ -13,7 +13,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/JoelChinoP/uni-timetable/backend/internal/database"
 )
@@ -30,7 +29,6 @@ var shareIDPattern = regexp.MustCompile(`^[A-Za-z0-9]{10}$`)
 
 type sharedHandler struct {
 	queries *database.Queries
-	auth    *authHandler
 }
 
 func generateShareID() (string, error) {
@@ -93,13 +91,26 @@ func (handler *sharedHandler) createShared(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var createdBy pgtype.Int4
-	if user, ok := handler.auth.currentUser(r); ok && user.ID != 0 {
-		createdBy = pgtype.Int4{Int32: user.ID, Valid: true}
-	}
-
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
+	var pairs map[int32]int32
+	if err := json.Unmarshal(selection, &pairs); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid share payload")
+		return
+	}
+	for courseID, groupID := range pairs {
+		valid, err := handler.queries.GroupBelongsToCourse(ctx, database.GroupBelongsToCourseParams{
+			ID: groupID, IDCourse: courseID,
+		})
+		if err != nil {
+			writeError(w, http.StatusServiceUnavailable, "database unavailable")
+			return
+		}
+		if !valid {
+			writeError(w, http.StatusBadRequest, "selection contiene un grupo ajeno al curso")
+			return
+		}
+	}
 
 	// ponytail: collision probability is ~0; one retry covers the freak case.
 	for range 2 {
@@ -109,9 +120,8 @@ func (handler *sharedHandler) createShared(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		err = handler.queries.CreateSharedTimetable(ctx, database.CreateSharedTimetableParams{
-			ID:        id,
-			Column2:   string(selection),
-			CreatedBy: createdBy,
+			ID:      id,
+			Column2: string(selection),
 		})
 		if err == nil {
 			writeJSON(w, http.StatusCreated, map[string]string{"id": id})

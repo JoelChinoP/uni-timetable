@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -47,6 +48,8 @@ func writeConflict(err error, w http.ResponseWriter) bool {
 	switch pgError.Code {
 	case "23505":
 		writeError(w, http.StatusConflict, "el registro ya existe")
+	case "23P01":
+		writeError(w, http.StatusConflict, "el aula ya está ocupada en ese horario")
 	case "23503":
 		writeError(w, http.StatusConflict, "el registro está en uso")
 	case "23514", "23502":
@@ -117,6 +120,37 @@ type classroomJSON struct {
 	Capacity *int16 `json:"capacity"`
 }
 
+type classroomRequest struct {
+	Code     string `json:"code"`
+	Type     string `json:"type"`
+	Floor    *int16 `json:"floor"`
+	Capacity *int16 `json:"capacity"`
+}
+
+func classroomParams(request classroomRequest) (database.CreateClassroomParams, error) {
+	code := strings.TrimSpace(request.Code)
+	if len(code) == 0 || len(code) > 32 {
+		return database.CreateClassroomParams{}, fmt.Errorf("code debe tener entre 1 y 32 caracteres")
+	}
+	if request.Type != "THEORY" && request.Type != "LABORATORY" {
+		return database.CreateClassroomParams{}, fmt.Errorf("type debe ser THEORY o LABORATORY")
+	}
+	params := database.CreateClassroomParams{Code: code, Type: database.AppModeType(request.Type)}
+	if request.Floor != nil {
+		if *request.Floor < 0 || *request.Floor > 40 {
+			return database.CreateClassroomParams{}, fmt.Errorf("floor fuera de rango")
+		}
+		params.Floor = pgtype.Int2{Int16: *request.Floor, Valid: true}
+	}
+	if request.Capacity != nil {
+		if *request.Capacity <= 0 {
+			return database.CreateClassroomParams{}, fmt.Errorf("capacity debe ser positiva")
+		}
+		params.Capacity = pgtype.Int2{Int16: *request.Capacity, Valid: true}
+	}
+	return params, nil
+}
+
 func mapClassrooms(rows []database.ListClassroomsRow) []classroomJSON {
 	items := make([]classroomJSON, 0, len(rows))
 	for _, row := range rows {
@@ -137,40 +171,16 @@ func (catalog *catalogHandler) createClassroom(w http.ResponseWriter, r *http.Re
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
-	var request struct {
-		Code     string `json:"code"`
-		Type     string `json:"type"`
-		Floor    *int16 `json:"floor"`
-		Capacity *int16 `json:"capacity"`
-	}
+	var request classroomRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid classroom payload")
 		return
 	}
 
-	code := strings.TrimSpace(request.Code)
-	if len(code) == 0 || len(code) > 32 {
-		writeError(w, http.StatusBadRequest, "code debe tener entre 1 y 32 caracteres")
+	params, err := classroomParams(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
-	}
-	if request.Type != "THEORY" && request.Type != "LABORATORY" {
-		writeError(w, http.StatusBadRequest, "type debe ser THEORY o LABORATORY")
-		return
-	}
-	params := database.CreateClassroomParams{Code: code, Type: database.AppModeType(request.Type)}
-	if request.Floor != nil {
-		if *request.Floor < 0 || *request.Floor > 40 {
-			writeError(w, http.StatusBadRequest, "floor fuera de rango")
-			return
-		}
-		params.Floor = pgtype.Int2{Int16: *request.Floor, Valid: true}
-	}
-	if request.Capacity != nil {
-		if *request.Capacity <= 0 {
-			writeError(w, http.StatusBadRequest, "capacity debe ser positiva")
-			return
-		}
-		params.Capacity = pgtype.Int2{Int16: *request.Capacity, Valid: true}
 	}
 
 	ctx, cancel := catalogTimeout(r)
@@ -187,6 +197,62 @@ func (catalog *catalogHandler) createClassroom(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusCreated, mapClassrooms([]database.ListClassroomsRow{{
 		ID: row.ID, Code: row.Code, Type: row.Type, Floor: row.Floor, Capacity: row.Capacity,
 	}})[0])
+}
+
+func (catalog *catalogHandler) updateClassroom(w http.ResponseWriter, r *http.Request) {
+	if !requireCatalogUser(catalog, w, r) {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	var request classroomRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid classroom payload")
+		return
+	}
+	params, err := classroomParams(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx, cancel := catalogTimeout(r)
+	defer cancel()
+	existingType, err := catalog.queries.GetClassroomType(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "aula no encontrada")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	if existingType != params.Type {
+		writeError(w, http.StatusBadRequest, "no se puede cambiar la modalidad de un aula")
+		return
+	}
+	row, err := catalog.queries.UpdateClassroom(ctx, database.UpdateClassroomParams{
+		ID: id, Code: params.Code, Type: params.Type, Floor: params.Floor, Capacity: params.Capacity,
+	})
+	if err != nil {
+		if writeConflict(err, w) {
+			return
+		}
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, classroomJSON{ID: row.ID, Code: row.Code, Type: string(row.Type),
+		Floor: nullableInt16(row.Floor), Capacity: nullableInt16(row.Capacity)})
+}
+
+func nullableInt16(value pgtype.Int2) *int16 {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Int16
 }
 
 func (catalog *catalogHandler) deleteClassroom(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +278,20 @@ type teacherItemJSON struct {
 	Name     string `json:"name"`
 	LastName string `json:"lastName"`
 	FullName string `json:"fullName"`
+}
+
+type teacherRequest struct {
+	Name     string `json:"name"`
+	LastName string `json:"lastName"`
+}
+
+func teacherNames(request teacherRequest) (string, string, error) {
+	name := strings.TrimSpace(request.Name)
+	lastName := strings.TrimSpace(request.LastName)
+	if len(name) < 2 || len(name) > 100 || len(lastName) < 2 || len(lastName) > 100 {
+		return "", "", fmt.Errorf("name y lastName deben tener entre 2 y 100 caracteres")
+	}
+	return name, lastName, nil
 }
 
 func mapTeachers(rows []database.ListTeachersRow) []teacherItemJSON {
@@ -248,19 +328,15 @@ func (catalog *catalogHandler) createTeacher(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
-	var request struct {
-		Name     string `json:"name"`
-		LastName string `json:"lastName"`
-	}
+	var request teacherRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid teacher payload")
 		return
 	}
 
-	name := strings.TrimSpace(request.Name)
-	lastName := strings.TrimSpace(request.LastName)
-	if len(name) < 2 || len(name) > 100 || len(lastName) < 2 || len(lastName) > 100 {
-		writeError(w, http.StatusBadRequest, "name y lastName deben tener entre 2 y 100 caracteres")
+	name, lastName, err := teacherNames(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -297,6 +373,44 @@ func (catalog *catalogHandler) createTeacher(w http.ResponseWriter, r *http.Requ
 		LastName: lastName,
 		FullName: strings.TrimSpace(name + " " + lastName),
 	})
+}
+
+func (catalog *catalogHandler) updateTeacher(w http.ResponseWriter, r *http.Request) {
+	if !requireCatalogUser(catalog, w, r) {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	var request teacherRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid teacher payload")
+		return
+	}
+	name, lastName, err := teacherNames(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx, cancel := catalogTimeout(r)
+	defer cancel()
+	row, err := catalog.queries.UpdateTeacher(ctx, database.UpdateTeacherParams{ID: id, Name: name, LastName: lastName})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "docente no encontrado")
+		return
+	}
+	if err != nil {
+		if writeConflict(err, w) {
+			return
+		}
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, teacherItemJSON{ID: row.ID, Name: row.Name, LastName: row.LastName,
+		FullName: strings.TrimSpace(row.Name + " " + row.LastName)})
 }
 
 func (catalog *catalogHandler) deleteTeacher(w http.ResponseWriter, r *http.Request) {
@@ -337,6 +451,103 @@ func (catalog *catalogHandler) deleteByID(
 
 // ---------- Cursos ----------
 
+type courseRequest struct {
+	Name           string `json:"name"`
+	Abbreviation   string `json:"abbreviation"`
+	Type           string `json:"type"`
+	AcademicYear   int16  `json:"academicYear"`
+	TheoryCourseID *int32 `json:"theoryCourseId"`
+	TeacherID      *int32 `json:"teacherId"`
+	Credits        *int16 `json:"credits"`
+	Color          string `json:"color"`
+}
+
+type courseValues struct {
+	name           string
+	abbreviation   string
+	code           string
+	color          string
+	typeValue      database.AppModeType
+	academicYear   int16
+	credits        pgtype.Int2
+	theoryCourseID pgtype.Int4
+	teacherID      pgtype.Int4
+}
+
+func normalizeCourseRequest(request courseRequest) (courseValues, error) {
+	values := courseValues{
+		name:         strings.TrimSpace(request.Name),
+		abbreviation: strings.ToUpper(strings.TrimSpace(request.Abbreviation)),
+		typeValue:    database.AppModeType(request.Type),
+		academicYear: request.AcademicYear,
+	}
+	if len(values.name) < 3 || len(values.name) > 100 {
+		return values, fmt.Errorf("name debe tener entre 3 y 100 caracteres")
+	}
+	if values.abbreviation == "" || len(values.abbreviation) > 10 {
+		return values, fmt.Errorf("abbreviation debe tener entre 1 y 10 caracteres")
+	}
+	if request.Type != "THEORY" && request.Type != "LABORATORY" {
+		return values, fmt.Errorf("type debe ser THEORY o LABORATORY")
+	}
+	if request.AcademicYear < 1 || request.AcademicYear > 5 {
+		return values, fmt.Errorf("academicYear debe estar entre 1 y 5")
+	}
+	if request.Type == "LABORATORY" && request.TheoryCourseID == nil {
+		return values, fmt.Errorf("un laboratorio necesita su curso de teoría")
+	}
+
+	values.code = values.abbreviation
+	if request.Type == "LABORATORY" {
+		values.code += "-L"
+		values.abbreviation += "-L"
+	}
+	if len(values.abbreviation) > 10 {
+		return values, fmt.Errorf("abbreviation debe tener como máximo 8 caracteres para laboratorios")
+	}
+	if !courseCodePattern.MatchString(values.code) {
+		return values, fmt.Errorf("código de curso inválido")
+	}
+
+	values.color = strings.TrimSpace(request.Color)
+	if values.color == "" {
+		hash := 0
+		for _, r := range values.name {
+			hash = (hash*31 + int(r)) % len(courseColors)
+		}
+		values.color = courseColors[hash]
+	} else if !colorPattern.MatchString(values.color) {
+		return values, fmt.Errorf("color debe ser hexadecimal #RRGGBB")
+	}
+	if request.Credits != nil {
+		if *request.Credits <= 0 || *request.Credits > 40 {
+			return values, fmt.Errorf("credits fuera de rango")
+		}
+		values.credits = pgtype.Int2{Int16: *request.Credits, Valid: true}
+	}
+	if request.TheoryCourseID != nil {
+		values.theoryCourseID = pgtype.Int4{Int32: *request.TheoryCourseID, Valid: true}
+	}
+	if request.TeacherID != nil {
+		values.teacherID = pgtype.Int4{Int32: *request.TeacherID, Valid: true}
+	}
+	return values, nil
+}
+
+func validTheoryCourse(ctx context.Context, queries *database.Queries, values courseValues) (bool, error) {
+	if values.typeValue == database.AppModeTypeTHEORY {
+		return true, nil
+	}
+	meta, err := queries.GetTheoryCourseMeta(ctx, values.theoryCourseID.Int32)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return meta.Type == database.AppModeTypeTHEORY && meta.CareerCode == defaultCareerCode, nil
+}
+
 func (catalog *catalogHandler) courses(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
@@ -351,93 +562,42 @@ func (catalog *catalogHandler) createCourse(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
-	var request struct {
-		Name           string `json:"name"`
-		Abbreviation   string `json:"abbreviation"`
-		Type           string `json:"type"`
-		AcademicYear   int16  `json:"academicYear"`
-		TheoryCourseID *int32 `json:"theoryCourseId"`
-		TeacherID      *int32 `json:"teacherId"`
-		Credits        *int16 `json:"credits"`
-		Color          string `json:"color"`
-	}
+	var request courseRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid course payload")
 		return
 	}
 
-	name := strings.TrimSpace(request.Name)
-	abbreviation := strings.ToUpper(strings.TrimSpace(request.Abbreviation))
-	if len(name) < 3 || len(name) > 100 {
-		writeError(w, http.StatusBadRequest, "name debe tener entre 3 y 100 caracteres")
+	values, err := normalizeCourseRequest(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
-	}
-	if abbreviation == "" || len(abbreviation) > 10 {
-		writeError(w, http.StatusBadRequest, "abbreviation debe tener entre 1 y 10 caracteres")
-		return
-	}
-	if request.Type != "THEORY" && request.Type != "LABORATORY" {
-		writeError(w, http.StatusBadRequest, "type debe ser THEORY o LABORATORY")
-		return
-	}
-	if request.AcademicYear < 1 || request.AcademicYear > 5 {
-		writeError(w, http.StatusBadRequest, "academicYear debe estar entre 1 y 5")
-		return
-	}
-	if request.Type == "LABORATORY" && request.TheoryCourseID == nil {
-		writeError(w, http.StatusBadRequest, "un laboratorio necesita su curso de teoría")
-		return
-	}
-
-	code := abbreviation
-	if request.Type == "LABORATORY" {
-		// ponytail: sufijo fijo evita colisiones con la UNIQUE (career, name, abbreviation).
-		code += "-L"
-		abbreviation += "-L"
-	}
-	if !courseCodePattern.MatchString(code) {
-		writeError(w, http.StatusBadRequest, "código de curso inválido")
-		return
-	}
-
-	color := strings.TrimSpace(request.Color)
-	if color == "" {
-		// ponytail: palette + stable hash keeps colors consistent without a picker.
-		hash := 0
-		for _, r := range name {
-			hash = (hash*31 + int(r)) % len(courseColors)
-		}
-		color = courseColors[hash]
-	} else if !colorPattern.MatchString(color) {
-		writeError(w, http.StatusBadRequest, "color debe ser hexadecimal #RRGGBB")
-		return
-	}
-
-	params := database.CreateCourseParams{
-		Code:         code,
-		Name:         name,
-		Abbreviation: abbreviation,
-		Color:        color,
-		Type:         database.AppModeType(request.Type),
-		Code_2:       defaultCareerCode,
-		AcademicYear: request.AcademicYear,
-	}
-	if request.Credits != nil {
-		if *request.Credits <= 0 || *request.Credits > 40 {
-			writeError(w, http.StatusBadRequest, "credits fuera de rango")
-			return
-		}
-		params.Credits = pgtype.Int2{Int16: *request.Credits, Valid: true}
-	}
-	if request.TheoryCourseID != nil {
-		params.IDCourseTheory = pgtype.Int4{Int32: *request.TheoryCourseID, Valid: true}
-	}
-	if request.TeacherID != nil {
-		params.IDTeacher = pgtype.Int4{Int32: *request.TeacherID, Valid: true}
 	}
 
 	ctx, cancel := catalogTimeout(r)
 	defer cancel()
+	validTheory, err := validTheoryCourse(ctx, catalog.queries, values)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	if !validTheory {
+		writeError(w, http.StatusBadRequest, "el curso relacionado debe ser una teoría de la misma carrera")
+		return
+	}
+
+	params := database.CreateCourseParams{
+		Code:           values.code,
+		Name:           values.name,
+		Abbreviation:   values.abbreviation,
+		Credits:        values.credits,
+		Color:          values.color,
+		Type:           values.typeValue,
+		Code_2:         defaultCareerCode,
+		IDCourseTheory: values.theoryCourseID,
+		AcademicYear:   values.academicYear,
+		IDTeacher:      values.teacherID,
+	}
 
 	row, err := catalog.queries.CreateCourse(ctx, params)
 	if err != nil {
@@ -450,6 +610,65 @@ func (catalog *catalogHandler) createCourse(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusCreated, map[string]any{"id": row.ID, "code": row.Code, "name": row.Name})
 }
 
+func (catalog *catalogHandler) updateCourse(w http.ResponseWriter, r *http.Request) {
+	if !requireCatalogUser(catalog, w, r) {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	var request courseRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid course payload")
+		return
+	}
+	values, err := normalizeCourseRequest(request)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx, cancel := catalogTimeout(r)
+	defer cancel()
+	existing, err := catalog.queries.GetCourseMeta(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "curso no encontrado")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	if existing.Type != values.typeValue {
+		writeError(w, http.StatusBadRequest, "no se puede cambiar la modalidad de un curso")
+		return
+	}
+	validTheory, err := validTheoryCourse(ctx, catalog.queries, values)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	if !validTheory {
+		writeError(w, http.StatusBadRequest, "el curso relacionado debe ser una teoría de la misma carrera")
+		return
+	}
+	row, err := catalog.queries.UpdateCourse(ctx, database.UpdateCourseParams{
+		ID: id, Code: values.code, Name: values.name, Abbreviation: values.abbreviation,
+		Credits: values.credits, Color: values.color, IDCourseTheory: values.theoryCourseID,
+		AcademicYear: values.academicYear, IDTeacher: values.teacherID,
+	})
+	if err != nil {
+		if writeConflict(err, w) {
+			return
+		}
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": row.ID, "code": row.Code, "name": row.Name})
+}
+
 func (catalog *catalogHandler) deleteCourse(w http.ResponseWriter, r *http.Request) {
 	catalog.deleteByID(w, r, "id", catalog.queries.DeleteCourse)
 }
@@ -460,6 +679,13 @@ type sessionPayload struct {
 	Day               string `json:"day"`
 	StartHourAcademic int16  `json:"startHourAcademic"`
 	DurationHours     int16  `json:"durationHours"`
+}
+
+type groupRequest struct {
+	CourseID    int32            `json:"courseId"`
+	Name        string           `json:"name"`
+	ClassroomID *int32           `json:"classroomId"`
+	Sessions    []sessionPayload `json:"sessions"`
 }
 
 func validateSessions(sessions []sessionPayload) error {
@@ -512,12 +738,7 @@ func (catalog *catalogHandler) createGroup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 32<<10)
-	var request struct {
-		CourseID    int32            `json:"courseId"`
-		Name        string           `json:"name"`
-		ClassroomID *int32           `json:"classroomId"`
-		Sessions    []sessionPayload `json:"sessions"`
-	}
+	var request groupRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid group payload")
 		return
@@ -545,8 +766,12 @@ func (catalog *catalogHandler) createGroup(w http.ResponseWriter, r *http.Reques
 
 	queries := catalog.queries.WithTx(tx)
 	course, err := queries.GetCourseMeta(ctx, request.CourseID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "curso no encontrado")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
 		return
 	}
 
@@ -599,6 +824,106 @@ func (catalog *catalogHandler) createGroup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"id": group.ID, "code": group.Code, "name": group.Name})
+}
+
+func (catalog *catalogHandler) updateGroup(w http.ResponseWriter, r *http.Request) {
+	if !requireCatalogUser(catalog, w, r) {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 32<<10)
+	var request groupRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid group payload")
+		return
+	}
+	name := strings.ToUpper(strings.TrimSpace(request.Name))
+	if !groupNamePattern.MatchString(name) {
+		writeError(w, http.StatusBadRequest, "name debe ser corto (A, B, C…)")
+		return
+	}
+	if err := validateSessions(request.Sessions); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx, cancel := catalogTimeout(r)
+	defer cancel()
+	tx, err := catalog.db.Begin(ctx)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	defer tx.Rollback(ctx)
+	queries := catalog.queries.WithTx(tx)
+	groupMeta, err := queries.GetGroupMeta(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "grupo no encontrado")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	if request.CourseID != groupMeta.IDCourse {
+		writeError(w, http.StatusBadRequest, "no se puede mover un grupo a otro curso")
+		return
+	}
+
+	var classroomID pgtype.Int4
+	if request.ClassroomID != nil {
+		classroomType, err := queries.GetClassroomType(ctx, *request.ClassroomID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusBadRequest, "aula no encontrada")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusServiceUnavailable, "database unavailable")
+			return
+		}
+		if classroomType != groupMeta.Type {
+			writeError(w, http.StatusBadRequest, "el aula no corresponde a la modalidad del curso")
+			return
+		}
+		classroomID = pgtype.Int4{Int32: *request.ClassroomID, Valid: true}
+	}
+
+	if err := queries.DeleteGroupSessions(ctx, id); err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	group, err := queries.UpdateGroup(ctx, database.UpdateGroupParams{
+		ID: id, Code: fmt.Sprintf("%d-%s", request.CourseID, name), Name: name, IDClassroom: classroomID,
+	})
+	if err != nil {
+		if writeConflict(err, w) {
+			return
+		}
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	for _, session := range request.Sessions {
+		err := queries.CreateGroupSession(ctx, database.CreateGroupSessionParams{
+			IDGroup: id, Day: database.AppWeekDay(session.Day),
+			StartHourAcademic: session.StartHourAcademic, DurationHours: session.DurationHours,
+		})
+		if err != nil {
+			if writeConflict(err, w) {
+				return
+			}
+			writeError(w, http.StatusServiceUnavailable, "database unavailable")
+			return
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": group.ID, "code": group.Code, "name": group.Name})
 }
 
 func (catalog *catalogHandler) deleteGroup(w http.ResponseWriter, r *http.Request) {

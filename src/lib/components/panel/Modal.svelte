@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
+	import { trapFocus } from '../../utils/focus';
 
 	export let title: string;
 	export let onClose: () => void;
@@ -14,23 +15,26 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div
-	class="fixed inset-0 z-40 grid place-items-center p-4 backdrop-blur-md"
+	class="fixed inset-0 z-40 grid place-items-center bg-[var(--ui-overlay)] p-3 backdrop-blur-sm sm:p-5"
 	role="presentation"
-	style="background:var(--ui-overlay);"
 	on:click={(event) => event.target === event.currentTarget && onClose()}
 	transition:fade
 >
 	<div
-		class="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border-subtle bg-panel-strong shadow-panel"
+		class="glass-panel flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[24px]"
 		role="dialog"
 		aria-modal="true"
-		aria-label={title}
+		aria-labelledby="panel-modal-title"
+		tabindex="-1"
+		use:trapFocus
 		transition:scale={{ start: 0.96, duration: 160 }}
 	>
 		<header class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4">
-			<h2 class="font-display text-xl font-bold text-primary">{title}</h2>
+			<h2 id="panel-modal-title" class="font-display text-xl font-extrabold text-primary">
+				{title}
+			</h2>
 			<button
-				class="grid h-9 w-9 place-items-center rounded-full border border-border-subtle bg-surface text-secondary shadow-card transition hover:text-primary"
+				class="neo-button grid h-11 w-11 place-items-center text-secondary"
 				type="button"
 				aria-label="Cerrar"
 				on:click={onClose}
@@ -47,7 +51,7 @@
 				</svg>
 			</button>
 		</header>
-		<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
 			<slot />
 		</div>
 	</div>

@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
-	"encoding/hex"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -18,7 +19,7 @@ import (
 
 const (
 	sessionCookieName = "uni_timetable_session"
-	sessionDuration   = 7 * 24 * time.Hour
+	sessionDuration   = time.Hour
 )
 
 type AuthUser struct {
@@ -27,16 +28,18 @@ type AuthUser struct {
 	DisplayName   string `json:"displayName"`
 	Role          string `json:"role"`
 	EmailVerified bool   `json:"emailVerified"`
+	AvatarURL     string `json:"avatarUrl,omitempty"`
 }
 
-type sessionRecord struct {
-	user      AuthUser
-	expiresAt time.Time
+type sessionClaims struct {
+	User      AuthUser `json:"user"`
+	ExpiresAt int64    `json:"expiresAt"`
+	Nonce     string   `json:"nonce"`
 }
 
 type sessionStore struct {
-	mu       sync.RWMutex
-	sessions map[string]sessionRecord
+	secret []byte
+	now    func() time.Time
 }
 
 type authHandler struct {
@@ -51,53 +54,65 @@ type googleClaims struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Name          string `json:"name"`
+	Picture       string `json:"picture"`
 }
 
-func newSessionStore() *sessionStore {
-	// ponytail: sessions are instance-local; replace with a database table only if restarts require persistence.
-	return &sessionStore{sessions: make(map[string]sessionRecord)}
+func newSessionStore(configuredSecret ...string) *sessionStore {
+	secret := ""
+	if len(configuredSecret) > 0 {
+		secret = strings.TrimSpace(configuredSecret[0])
+	}
+	if secret == "" {
+		value := make([]byte, 32)
+		if _, err := rand.Read(value); err != nil {
+			panic("session entropy unavailable")
+		}
+		return &sessionStore{secret: value, now: time.Now}
+	}
+	return &sessionStore{secret: []byte(secret), now: time.Now}
 }
 
 func (sessions *sessionStore) create(user AuthUser) (string, error) {
-	value := make([]byte, 32)
-	if _, err := rand.Read(value); err != nil {
+	nonce := make([]byte, 12)
+	if _, err := rand.Read(nonce); err != nil {
 		return "", err
 	}
-
-	token := hex.EncodeToString(value)
-	now := time.Now()
-	sessions.mu.Lock()
-	for existingToken, existing := range sessions.sessions {
-		if now.After(existing.expiresAt) {
-			delete(sessions.sessions, existingToken)
-		}
+	payload, err := json.Marshal(sessionClaims{
+		User:      user,
+		ExpiresAt: sessions.now().Add(sessionDuration).Unix(),
+		Nonce:     base64.RawURLEncoding.EncodeToString(nonce),
+	})
+	if err != nil {
+		return "", err
 	}
-	sessions.sessions[token] = sessionRecord{
-		user:      user,
-		expiresAt: now.Add(sessionDuration),
-	}
-	sessions.mu.Unlock()
-	return token, nil
+	encoded := base64.RawURLEncoding.EncodeToString(payload)
+	return encoded + "." + base64.RawURLEncoding.EncodeToString(sessions.sign([]byte(encoded))), nil
 }
 
 func (sessions *sessionStore) get(token string) (AuthUser, bool) {
-	sessions.mu.RLock()
-	record, ok := sessions.sessions[token]
-	sessions.mu.RUnlock()
-
-	if !ok || time.Now().After(record.expiresAt) {
-		if ok {
-			sessions.delete(token)
-		}
+	encoded, signature, ok := strings.Cut(token, ".")
+	if !ok || len(encoded) > 4096 {
 		return AuthUser{}, false
 	}
-	return record.user, true
+	decodedSignature, err := base64.RawURLEncoding.DecodeString(signature)
+	if err != nil || !hmac.Equal(decodedSignature, sessions.sign([]byte(encoded))) {
+		return AuthUser{}, false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		return AuthUser{}, false
+	}
+	var claims sessionClaims
+	if err := json.Unmarshal(payload, &claims); err != nil || sessions.now().Unix() >= claims.ExpiresAt {
+		return AuthUser{}, false
+	}
+	return claims.User, true
 }
 
-func (sessions *sessionStore) delete(token string) {
-	sessions.mu.Lock()
-	delete(sessions.sessions, token)
-	sessions.mu.Unlock()
+func (sessions *sessionStore) sign(value []byte) []byte {
+	mac := hmac.New(sha256.New, sessions.secret)
+	_, _ = mac.Write(value)
+	return mac.Sum(nil)
 }
 
 func (auth *authHandler) currentUser(r *http.Request) (AuthUser, bool) {
@@ -170,6 +185,7 @@ func (auth *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.EmailVerified = true
+	user.AvatarURL = strings.TrimSpace(claims.Picture)
 
 	token, err := auth.sessions.create(user)
 	if err != nil {
@@ -190,9 +206,7 @@ func (auth *authHandler) me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (auth *authHandler) logout(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie(sessionCookieName); err == nil {
-		auth.sessions.delete(cookie.Value)
-	}
+	// ponytail: stateless logout clears this browser; a copied token expires within one hour.
 	auth.clearSessionCookie(w)
 	w.WriteHeader(http.StatusNoContent)
 }

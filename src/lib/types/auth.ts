@@ -6,4 +6,5 @@ export interface AuthUser {
 	displayName: string;
 	role: UserRole;
 	emailVerified: boolean;
+	avatarUrl?: string;
 }

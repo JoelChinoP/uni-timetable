@@ -5,6 +5,8 @@
 	export let courses: Course[] = [];
 	export let academicHours: AcademicHour[] = [];
 	export let onAddGroup: (course: Course) => void;
+	export let onEditCourse: (course: Course) => void;
+	export let onEditGroup: (group: CourseGroup, course: Course) => void;
 	export let onDeleteGroup: (group: CourseGroup, course: Course) => void;
 	export let onDeleteCourse: (course: Course) => void;
 
@@ -30,10 +32,7 @@
 	class="grid divide-y divide-grid lg:grid-cols-[minmax(0,270px)_minmax(0,1fr)] lg:divide-x lg:divide-y-0"
 >
 	<div class="flex max-h-[42vh] min-h-0 flex-col lg:h-[62vh] lg:max-h-none">
-		<label
-			class="flex items-center border-b border-border-subtle px-3 py-2.5"
-			aria-label="Buscar cursos"
-		>
+		<label class="neo-control m-3 flex items-center px-3" aria-label="Buscar cursos">
 			<svg
 				class="h-3.5 w-3.5 shrink-0 stroke-muted"
 				viewBox="0 0 24 24"
@@ -46,7 +45,7 @@
 				<path d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0a7 7 0 0 1 14 0Z" />
 			</svg>
 			<input
-				class="min-w-0 flex-1 bg-transparent px-2 text-xs text-primary outline-none placeholder:text-muted"
+				class="h-11 min-w-0 flex-1 bg-transparent px-2 text-xs text-primary outline-none placeholder:text-muted"
 				type="search"
 				placeholder="Buscar curso…"
 				bind:value={search}
@@ -59,8 +58,10 @@
 			{/if}
 			{#each visible as course (course.id)}
 				<button
-					class={`flex w-full items-center gap-2 px-3 py-2 text-left transition ${
-						selected?.id === course.id ? 'bg-accent-soft' : 'hover:bg-surface-muted'
+					class={`flex min-h-12 w-full items-center gap-2 border-l-[3px] px-3 py-2 text-left transition ${
+						selected?.id === course.id
+							? 'border-accent bg-accent-soft'
+							: 'border-transparent hover:bg-surface-muted'
 					}`}
 					type="button"
 					on:click={() => (selectedId = course.id)}
@@ -100,14 +101,19 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<button
-							class="rounded-[10px] bg-accent-strong px-3 py-1.5 text-xs font-bold text-white transition hover:bg-accent"
+							class="neo-button min-h-10 px-3 text-xs font-bold text-primary"
+							type="button"
+							on:click={() => selected && onEditCourse(selected)}>Editar</button
+						>
+						<button
+							class="min-h-10 rounded-[10px] bg-accent-strong px-3 text-xs font-bold text-white transition hover:bg-accent"
 							type="button"
 							on:click={() => selected && onAddGroup(selected)}
 						>
 							+ Grupo
 						</button>
 						<button
-							class="grid h-7 w-7 place-items-center rounded-[10px] text-warning transition hover:bg-warning-soft"
+							class="grid h-10 w-10 place-items-center rounded-[10px] text-warning transition hover:bg-warning-soft"
 							type="button"
 							aria-label={`Eliminar ${selected.name}`}
 							on:click={() => selected && onDeleteCourse(selected)}
@@ -136,7 +142,7 @@
 					</p>
 				{/if}
 				{#each selected.groups as group (group.id)}
-					<article class="rounded-[14px] border border-border-subtle bg-surface p-3">
+					<article class="neo-card p-3">
 						<div class="flex items-center justify-between gap-2">
 							<div class="flex items-center gap-2">
 								<span
@@ -151,13 +157,20 @@
 									</span>
 								{/if}
 							</div>
-							<button
-								class="rounded-lg px-2 py-1 text-[11px] font-bold text-warning transition hover:bg-warning-soft"
-								type="button"
-								on:click={() => selected && onDeleteGroup(group, selected)}
-							>
-								Eliminar
-							</button>
+							<div class="flex gap-1">
+								<button
+									class="min-h-10 rounded-lg px-2 text-[11px] font-bold text-primary transition hover:bg-surface-muted"
+									type="button"
+									on:click={() => selected && onEditGroup(group, selected)}>Editar</button
+								>
+								<button
+									class="min-h-10 rounded-lg px-2 text-[11px] font-bold text-warning transition hover:bg-warning-soft"
+									type="button"
+									on:click={() => selected && onDeleteGroup(group, selected)}
+								>
+									Eliminar
+								</button>
+							</div>
 						</div>
 						<div class="mt-2 flex flex-wrap gap-1.5">
 							{#each group.sessions as session (session.id)}

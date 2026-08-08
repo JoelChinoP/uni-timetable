@@ -42,20 +42,19 @@ func TestRoutesWithoutDatabase(t *testing.T) {
 }
 
 func TestSessionStore(t *testing.T) {
-	sessions := newSessionStore()
+	sessions := newSessionStore("0123456789abcdef0123456789abcdef")
+	secondInstance := newSessionStore("0123456789abcdef0123456789abcdef")
 	user := AuthUser{ID: 1, Email: "jchinop@unsa.edu.pe", DisplayName: "Joel", Role: "ADMIN", EmailVerified: true}
 
 	token, err := sessions.create(user)
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	if got, ok := sessions.get(token); !ok || got != user {
+	if got, ok := secondInstance.get(token); !ok || got != user {
 		t.Fatalf("stored session = %+v, %t; want %+v, true", got, ok, user)
 	}
-
-	sessions.delete(token)
-	if _, ok := sessions.get(token); ok {
-		t.Fatal("deleted session still exists")
+	if _, ok := secondInstance.get(token + "tampered"); ok {
+		t.Fatal("tampered session authenticated")
 	}
 }
 

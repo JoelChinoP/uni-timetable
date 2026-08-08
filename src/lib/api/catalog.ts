@@ -1,5 +1,5 @@
 import { request } from './client';
-import type { SessionMode } from '../types/planner';
+import type { PlannerDay, SessionMode } from '../types/planner';
 
 export interface ClassroomItem {
 	id: number;
@@ -17,7 +17,7 @@ export interface TeacherItem {
 }
 
 export interface GroupSessionPayload {
-	day: string;
+	day: PlannerDay;
 	startHourAcademic: number;
 	durationHours: number;
 }
@@ -37,6 +37,7 @@ export interface CoursePayload {
 	theoryCourseId: number | null;
 	teacherId: number | null;
 	credits: number | null;
+	color?: string;
 }
 
 export function getClassrooms() {
@@ -45,6 +46,13 @@ export function getClassrooms() {
 
 export function createClassroom(payload: Omit<ClassroomItem, 'id'>) {
 	return request<ClassroomItem>('/classrooms', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateClassroom(id: number, payload: Omit<ClassroomItem, 'id'>) {
+	return request<ClassroomItem>(`/classrooms/${id}`, {
+		method: 'PUT',
+		body: JSON.stringify(payload),
+	});
 }
 
 export function deleteClassroom(id: number) {
@@ -59,6 +67,10 @@ export function createTeacher(payload: { name: string; lastName: string }) {
 	return request<TeacherItem>('/teachers', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export function updateTeacher(id: number, payload: { name: string; lastName: string }) {
+	return request<TeacherItem>(`/teachers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
 export function deleteTeacher(id: number) {
 	return request<void>(`/teachers/${id}`, { method: 'DELETE' });
 }
@@ -70,6 +82,13 @@ export function createCourse(payload: CoursePayload) {
 	});
 }
 
+export function updateCourse(id: number, payload: CoursePayload) {
+	return request<{ id: number; code: string; name: string }>(`/courses/${id}`, {
+		method: 'PUT',
+		body: JSON.stringify(payload),
+	});
+}
+
 export function deleteCourse(id: number) {
 	return request<void>(`/courses/${id}`, { method: 'DELETE' });
 }
@@ -77,6 +96,13 @@ export function deleteCourse(id: number) {
 export function createGroup(payload: GroupPayload) {
 	return request<{ id: number; code: string; name: string }>('/groups', {
 		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+}
+
+export function updateGroup(id: number, payload: GroupPayload) {
+	return request<{ id: number; code: string; name: string }>(`/groups/${id}`, {
+		method: 'PUT',
 		body: JSON.stringify(payload),
 	});
 }

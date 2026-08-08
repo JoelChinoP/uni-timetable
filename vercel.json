@@ -4,6 +4,8 @@
 	"outputDirectory": "dist",
 	"rewrites": [
 		{ "source": "/login", "destination": "/index.html" },
-		{ "source": "/panel", "destination": "/index.html" }
+		{ "source": "/panel", "destination": "/index.html" },
+		{ "source": "/s/:path*", "destination": "/index.html" },
+		{ "source": "/:path*", "destination": "/index.html" }
 	]
 }

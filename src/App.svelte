@@ -5,6 +5,7 @@
 	import PanelPage from './lib/pages/PanelPage.svelte';
 	import DashboardPage from './lib/pages/DashboardPage.svelte';
 	import SharedPage from './lib/pages/SharedPage.svelte';
+	import NotFoundPage from './lib/pages/NotFoundPage.svelte';
 	import { loadSession, logoutSession } from './lib/api/auth';
 	import type { AuthUser } from './lib/types/auth';
 
@@ -53,7 +54,7 @@
 	{:else}
 		<div class="grid min-h-dvh place-items-center text-secondary">Comprobando sesión…</div>
 	{/if}
-{:else if path.startsWith('/s/')}
+{:else if /^\/s\/[A-Za-z0-9]{10}$/.test(path)}
 	<SharedPage
 		shareId={path.slice(3)}
 		{user}
@@ -61,6 +62,8 @@
 		onNavigate={navigate}
 		onLogout={logoutUser}
 	/>
-{:else}
+{:else if path === '/'}
 	<DashboardPage {user} busy={!sessionKnown} onNavigate={navigate} onLogout={logoutUser} />
+{:else}
+	<NotFoundPage onNavigate={navigate} />
 {/if}

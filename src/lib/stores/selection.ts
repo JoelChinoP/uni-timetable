@@ -28,7 +28,11 @@ function loadSelection(): Selection {
 export const selection = writable<Selection>(loadSelection());
 
 selection.subscribe((value) => {
-	window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+	try {
+		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+	} catch {
+		// ponytail: the in-memory timetable still works when storage is blocked or full.
+	}
 });
 
 export function toggleGroup(courseId: number, groupId: number) {
@@ -45,6 +49,10 @@ export function toggleGroup(courseId: number, groupId: number) {
 
 export function clearSelection() {
 	selection.set({});
+}
+
+export function replaceSelection(next: Selection) {
+	selection.set({ ...next });
 }
 
 export function pruneSelection(courses: Course[]) {

@@ -16,6 +16,8 @@
 		"check": "npm run check:frontend && npm run check:backend",
 		"check:frontend": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
 		"check:backend": "go -C backend test ./...",
+		"test": "npm run test:frontend && npm run check:backend",
+		"test:frontend": "node --test scripts/planner.test.ts",
 		"format": "npm run format:frontend && npm run format:backend",
 		"format:frontend": "prettier --write .",
 		"format:backend": "go -C backend fmt ./...",

@@ -1,6 +1,7 @@
 import type {
 	AcademicHour,
 	Course,
+	CourseBundle,
 	PlannerConflict,
 	PlannerDay,
 	PlannerEvent,
@@ -64,6 +65,27 @@ export function getSelectedCourseGroups(
 	}, []);
 }
 
+export function groupRelatedCourses(courses: Course[]): CourseBundle[] {
+	const bundles = new Map<number, CourseBundle>();
+	for (const course of courses) {
+		if (course.type === 'THEORY') {
+			bundles.set(course.id, { key: String(course.id), theory: course, laboratories: [] });
+		}
+	}
+	for (const course of courses) {
+		if (course.type !== 'LABORATORY') {
+			continue;
+		}
+		const parent = course.theoryCourseId ? bundles.get(course.theoryCourseId) : undefined;
+		if (parent) {
+			parent.laboratories.push(course);
+		} else {
+			bundles.set(course.id, { key: `lab-${course.id}`, theory: null, laboratories: [course] });
+		}
+	}
+	return [...bundles.values()];
+}
+
 export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]): {
 	events: PlannerEvent[];
 	conflicts: PlannerConflict[];
@@ -105,6 +127,27 @@ export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]):
 			return left.endHourAcademic - right.endHourAcademic;
 		});
 
+		for (let leftIndex = 0; leftIndex < sorted.length; leftIndex += 1) {
+			for (let rightIndex = leftIndex + 1; rightIndex < sorted.length; rightIndex += 1) {
+				const left = sorted[leftIndex];
+				const right = sorted[rightIndex];
+				if (!hasAcademicOverlap(left, right)) {
+					continue;
+				}
+				conflicts.push({
+					id: `${day}-${left.id}-${right.id}`,
+					day,
+					eventIds: [left.id, right.id],
+				});
+				const leftSet = conflictMap.get(left.id) ?? new Set<string>();
+				const rightSet = conflictMap.get(right.id) ?? new Set<string>();
+				leftSet.add(right.id);
+				rightSet.add(left.id);
+				conflictMap.set(left.id, leftSet);
+				conflictMap.set(right.id, rightSet);
+			}
+		}
+
 		const visited = new Set<string>();
 		for (const event of sorted) {
 			if (visited.has(event.id)) {
@@ -113,24 +156,6 @@ export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]):
 
 			const component = collectOverlapComponent(event, sorted);
 			component.forEach(({ id }) => visited.add(id));
-
-			if (component.length > 1) {
-				conflicts.push({
-					id: `${day}-${component.map(({ id }) => id).join('-')}`,
-					day,
-					eventIds: component.map(({ id }) => id),
-				});
-
-				component.forEach((sourceEvent) => {
-					const sourceSet = conflictMap.get(sourceEvent.id) ?? new Set<string>();
-					component.forEach((targetEvent) => {
-						if (sourceEvent.id !== targetEvent.id) {
-							sourceSet.add(targetEvent.id);
-						}
-					});
-					conflictMap.set(sourceEvent.id, sourceSet);
-				});
-			}
 
 			const laneAssignments: number[] = [];
 			const laneEndings: number[] = [];
@@ -218,6 +243,7 @@ export function matchesCourseSearch(course: Course, searchQuery: string) {
 
 	return (
 		course.code.toLowerCase().includes(normalizedQuery) ||
+		course.abbreviation.toLowerCase().includes(normalizedQuery) ||
 		course.name.toLowerCase().includes(normalizedQuery) ||
 		course.summary.toLowerCase().includes(normalizedQuery)
 	);

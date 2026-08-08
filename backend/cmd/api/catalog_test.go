@@ -128,16 +128,14 @@ func TestSharedRoutesWithoutDatabase(t *testing.T) {
 }
 
 func TestSessionStoreExpiry(t *testing.T) {
-	sessions := newSessionStore()
+	now := time.Now()
+	sessions := newSessionStore("0123456789abcdef0123456789abcdef")
+	sessions.now = func() time.Time { return now }
 	token, err := sessions.create(AuthUser{ID: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	sessions.mu.Lock()
-	record := sessions.sessions[token]
-	record.expiresAt = time.Now().Add(-time.Minute)
-	sessions.sessions[token] = record
-	sessions.mu.Unlock()
+	now = now.Add(sessionDuration)
 
 	if _, ok := sessions.get(token); ok {
 		t.Fatal("expired session must not authenticate")

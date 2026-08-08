@@ -212,6 +212,9 @@ func seed(ctx context.Context, pool *pgxpool.Pool, data *seedData) error {
 			return fmt.Errorf("sesión sin curso: %s %s", session.CourseKey, modality)
 		}
 		key := fmt.Sprintf("%d|%s", cID, session.Group)
+		if skippedGroups[key] {
+			continue
+		}
 
 		groupID, seen := groupsSeen[key]
 		if !seen {
@@ -271,6 +274,23 @@ func seed(ctx context.Context, pool *pgxpool.Pool, data *seedData) error {
 	}
 	if orphan != 0 {
 		return fmt.Errorf("integridad: %d sesiones con aula de modalidad incorrecta", orphan)
+	}
+	var overlaps int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*)
+		FROM app.schedule left_session
+		JOIN app.groups left_group ON left_group.id = left_session.id_group
+		JOIN app.schedule right_session ON right_session.id > left_session.id
+		  AND right_session.day = left_session.day
+		  AND right_session.start_hour_academic < left_session.start_hour_academic + left_session.duration_hours
+		  AND left_session.start_hour_academic < right_session.start_hour_academic + right_session.duration_hours
+		JOIN app.groups right_group ON right_group.id = right_session.id_group
+		  AND right_group.id_classroom = left_group.id_classroom
+		WHERE left_group.id_classroom IS NOT NULL`).Scan(&overlaps); err != nil {
+		return err
+	}
+	if overlaps != 0 {
+		return fmt.Errorf("integridad: %d cruces de aula", overlaps)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

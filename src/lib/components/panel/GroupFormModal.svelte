@@ -9,14 +9,19 @@
 	export let academicHours: AcademicHour[] = [];
 	export let busy = false;
 	export let errorMessage = '';
+	export let initialGroup: Course['groups'][number] | null = null;
 	export let onSave: (payload: GroupPayload) => void;
 	export let onClose: () => void;
 
 	const days: PlannerDay[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
-	let name = '';
-	let classroomId: number | null = null;
-	let rows: GroupSessionPayload[] = [{ day: 'MONDAY', startHourAcademic: 1, durationHours: 2 }];
+	let name = initialGroup?.name ?? '';
+	let classroomId: number | null = initialGroup
+		? (classrooms.find(({ code }) => code === initialGroup?.classroomLabel)?.id ?? null)
+		: null;
+	let rows: GroupSessionPayload[] = initialGroup?.sessions.map(
+		({ day, startHourAcademic, durationHours }) => ({ day, startHourAcademic, durationHours }),
+	) ?? [{ day: 'MONDAY', startHourAcademic: 1, durationHours: 2 }];
 
 	$: availableClassrooms = classrooms.filter((classroom) => classroom.type === course.type);
 
@@ -37,12 +42,11 @@
 		});
 	}
 
-	const fieldClass =
-		'w-full rounded-[12px] border border-border-subtle bg-surface px-3 py-2 text-sm text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent-soft';
+	const fieldClass = 'neo-control min-h-11 w-full px-3 py-2 text-sm text-primary outline-none';
 	const labelClass = 'text-[10px] font-extrabold tracking-[0.16em] text-muted uppercase';
 </script>
 
-<Modal title={`Nuevo grupo · ${course.name}`} {onClose}>
+<Modal title={`${initialGroup ? 'Editar grupo' : 'Nuevo grupo'} · ${course.name}`} {onClose}>
 	<form class="space-y-4" on:submit|preventDefault={submit}>
 		<div class="grid gap-3 sm:grid-cols-2">
 			<label class="flex flex-col gap-1.5">
@@ -71,9 +75,9 @@
 			<legend class={labelClass}>Horarios del grupo</legend>
 			<div class="mt-2 space-y-2">
 				{#each rows as row, index (index)}
-					<div class="grid grid-cols-[1fr_1fr_88px_36px] items-end gap-2">
+					<div class="neo-card grid gap-2 p-3 sm:grid-cols-[1fr_1fr_88px_44px] sm:items-end">
 						<label class="flex flex-col gap-1">
-							{#if index === 0}<span class={labelClass}>Día</span>{/if}
+							<span class={labelClass}>Día</span>
 							<select class={fieldClass} bind:value={row.day}>
 								{#each days as day (day)}
 									<option value={day}>{getDayLabel(day)}</option>
@@ -81,7 +85,7 @@
 							</select>
 						</label>
 						<label class="flex flex-col gap-1">
-							{#if index === 0}<span class={labelClass}>Inicio</span>{/if}
+							<span class={labelClass}>Inicio</span>
 							<select class={fieldClass} bind:value={row.startHourAcademic}>
 								{#each academicHours as hour (hour.hourNumber)}
 									<option value={hour.hourNumber}>
@@ -91,7 +95,7 @@
 							</select>
 						</label>
 						<label class="flex flex-col gap-1">
-							{#if index === 0}<span class={labelClass}>Bloques</span>{/if}
+							<span class={labelClass}>Bloques</span>
 							<select class={fieldClass} bind:value={row.durationHours}>
 								{#each [1, 2, 3, 4, 5, 6] as duration (duration)}
 									<option value={duration}>{duration}</option>
@@ -99,7 +103,7 @@
 							</select>
 						</label>
 						<button
-							class="grid h-9 w-9 place-items-center rounded-[10px] text-warning transition hover:bg-warning-soft disabled:opacity-40"
+							class="neo-button grid h-11 w-full place-items-center text-warning disabled:opacity-40 sm:w-11"
 							type="button"
 							aria-label="Quitar horario"
 							disabled={rows.length === 1}
@@ -129,7 +133,10 @@
 		</fieldset>
 
 		{#if errorMessage}
-			<p class="rounded-2xl bg-warning-soft px-4 py-3 text-sm font-semibold text-warning">
+			<p
+				class="rounded-2xl bg-warning-soft px-4 py-3 text-sm font-semibold text-warning"
+				role="alert"
+			>
 				{errorMessage}
 			</p>
 		{/if}
@@ -139,7 +146,7 @@
 			disabled={busy}
 			type="submit"
 		>
-			{busy ? 'Guardando…' : 'Guardar grupo con sus horarios'}
+			{busy ? 'Guardando…' : initialGroup ? 'Guardar cambios' : 'Guardar grupo con sus horarios'}
 		</button>
 	</form>
 </Modal>

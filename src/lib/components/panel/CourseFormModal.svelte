@@ -7,16 +7,18 @@
 	export let teachers: TeacherItem[] = [];
 	export let busy = false;
 	export let errorMessage = '';
+	export let initialCourse: Course | null = null;
 	export let onSave: (payload: CoursePayload) => void;
 	export let onClose: () => void;
 
-	let name = '';
-	let abbreviation = '';
-	let type: SessionMode = 'THEORY';
-	let academicYear = 1;
-	let theoryCourseId: number | null = null;
-	let teacherId: number | null = null;
-	let credits: number | null = null;
+	let name = initialCourse?.name ?? '';
+	let abbreviation = initialCourse?.abbreviation.replace(/-L$/, '') ?? '';
+	let type: SessionMode = initialCourse?.type ?? 'THEORY';
+	let academicYear = initialCourse?.academicYear ?? 1;
+	let theoryCourseId: number | null = initialCourse?.theoryCourseId ?? null;
+	let teacherId: number | null = initialCourse?.teacher?.id ?? null;
+	let credits: number | null = initialCourse?.credits ?? null;
+	let color = initialCourse?.color ?? '#2563eb';
 
 	$: theoryCourses = courses.filter((course) => course.type === 'THEORY');
 
@@ -29,15 +31,15 @@
 			theoryCourseId: type === 'LABORATORY' ? theoryCourseId : null,
 			teacherId,
 			credits: credits || null,
+			color,
 		});
 	}
 
-	const fieldClass =
-		'w-full rounded-[12px] border border-border-subtle bg-surface px-3 py-2 text-sm text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent-soft';
+	const fieldClass = 'neo-control min-h-11 w-full px-3 py-2 text-sm text-primary outline-none';
 	const labelClass = 'text-[10px] font-extrabold tracking-[0.16em] text-muted uppercase';
 </script>
 
-<Modal title="Nuevo curso" {onClose}>
+<Modal title={initialCourse ? `Editar · ${initialCourse.name}` : 'Nuevo curso'} {onClose}>
 	<form class="grid gap-3 sm:grid-cols-2" on:submit|preventDefault={submit}>
 		<label class="flex flex-col gap-1.5 sm:col-span-2">
 			<span class={labelClass}>Nombre</span>
@@ -56,7 +58,7 @@
 		</label>
 		<label class="flex flex-col gap-1.5">
 			<span class={labelClass}>Modalidad</span>
-			<select class={fieldClass} bind:value={type}>
+			<select class={fieldClass} bind:value={type} disabled={!!initialCourse}>
 				<option value="THEORY">Teoría</option>
 				<option value="LABORATORY">Laboratorio</option>
 			</select>
@@ -68,6 +70,10 @@
 					<option value={year}>{year}.º año</option>
 				{/each}
 			</select>
+		</label>
+		<label class="flex flex-col gap-1.5">
+			<span class={labelClass}>Color</span>
+			<input class="neo-control h-11 w-full cursor-pointer p-1.5" bind:value={color} type="color" />
 		</label>
 		<label class="flex flex-col gap-1.5">
 			<span class={labelClass}>Créditos (opcional)</span>
@@ -97,6 +103,7 @@
 		{#if errorMessage}
 			<p
 				class="rounded-2xl bg-warning-soft px-4 py-3 text-sm font-semibold text-warning sm:col-span-2"
+				role="alert"
 			>
 				{errorMessage}
 			</p>
@@ -107,7 +114,7 @@
 			disabled={busy}
 			type="submit"
 		>
-			{busy ? 'Guardando…' : 'Guardar curso'}
+			{busy ? 'Guardando…' : initialCourse ? 'Guardar cambios' : 'Guardar curso'}
 		</button>
 	</form>
 </Modal>

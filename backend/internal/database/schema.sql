@@ -134,6 +134,38 @@ CREATE TABLE app.schedule (
   CHECK (start_hour_academic + duration_hours <= 16)
 );
 
+-- Every writer uses the same transactional guard, including direct SQL and the seed.
+CREATE FUNCTION app.reject_classroom_overlap() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  classroom_id INTEGER;
+BEGIN
+  SELECT id_classroom INTO classroom_id FROM app.groups WHERE id = NEW.id_group;
+  IF classroom_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(classroom_id);
+  IF EXISTS (
+    SELECT 1
+    FROM app.schedule existing
+    JOIN app.groups existing_group ON existing_group.id = existing.id_group
+    WHERE existing_group.id_classroom = classroom_id
+      AND existing.day = NEW.day
+      AND existing.id <> NEW.id
+      AND existing.start_hour_academic < NEW.start_hour_academic + NEW.duration_hours
+      AND NEW.start_hour_academic < existing.start_hour_academic + existing.duration_hours
+  ) THEN
+    RAISE EXCEPTION 'classroom schedule overlaps' USING ERRCODE = '23P01';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER schedule_classroom_overlap
+BEFORE INSERT OR UPDATE ON app.schedule
+FOR EACH ROW EXECUTE FUNCTION app.reject_classroom_overlap();
+
 -- ponytail: short random ids make share links unguessable without a lookup; selection is a validated {courseId: groupId} map.
 CREATE TABLE app.shared_timetables (
   id CHAR(10) PRIMARY KEY,
@@ -154,5 +186,4 @@ CREATE INDEX courses_academic_year_idx ON app.courses(academic_year);
 CREATE INDEX groups_classroom_idx ON app.groups(id_classroom);
 CREATE INDEX schedule_start_hour_idx ON app.schedule(start_hour_academic);
 
--- ponytail: exact duplicates are blocked; add overlap constraints when writes exist.
 COMMIT;

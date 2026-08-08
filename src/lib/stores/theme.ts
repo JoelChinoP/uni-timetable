@@ -37,7 +37,11 @@ function createThemeStore() {
 		setTheme(theme: ThemeMode) {
 			applyTheme(theme);
 			if (typeof window !== 'undefined') {
-				window.localStorage.setItem(STORAGE_KEY, theme);
+				try {
+					window.localStorage.setItem(STORAGE_KEY, theme);
+				} catch {
+					// Theme still applies for this visit when storage is unavailable.
+				}
 			}
 			set(theme);
 		},
@@ -46,7 +50,11 @@ function createThemeStore() {
 				const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
 				applyTheme(nextTheme);
 				if (typeof window !== 'undefined') {
-					window.localStorage.setItem(STORAGE_KEY, nextTheme);
+					try {
+						window.localStorage.setItem(STORAGE_KEY, nextTheme);
+					} catch {
+						// Theme still applies for this visit when storage is unavailable.
+					}
 				}
 				return nextTheme;
 			});

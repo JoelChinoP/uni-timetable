@@ -45,6 +45,12 @@ export interface Course {
 	groups: CourseGroup[];
 }
 
+export interface CourseBundle {
+	key: string;
+	theory: Course | null;
+	laboratories: Course[];
+}
+
 export interface PlannerData {
 	termLabel: string;
 	days: PlannerDay[];
@@ -92,5 +98,5 @@ export interface PlannerEvent {
 export interface PlannerConflict {
 	id: string;
 	day: PlannerDay;
-	eventIds: string[];
+	eventIds: [string, string];
 }
