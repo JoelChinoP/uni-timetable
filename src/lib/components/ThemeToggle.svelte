@@ -14,7 +14,7 @@
 >
 	{#if theme === 'dark'}
 		<svg
-			class="h-5 w-5 stroke-current"
+			class="h-6 w-6 stroke-current"
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke-width="1.8"
@@ -28,7 +28,7 @@
 		</svg>
 	{:else}
 		<svg
-			class="h-5 w-5 stroke-current"
+			class="h-6 w-6 stroke-current"
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke-width="1.8"

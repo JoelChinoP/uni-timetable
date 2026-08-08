@@ -75,9 +75,9 @@
 		<img class="mx-auto h-14 w-14" src="/logo.svg" alt="" />
 		<p class="mt-4 text-xs font-extrabold tracking-[0.24em] text-accent uppercase">Horarios</p>
 		<h1 class="mt-3 font-display text-3xl font-extrabold text-primary">Inicia sesión</h1>
-		<p class="mt-3 text-sm leading-6 text-secondary">
+		<!-- <p class="mt-3 text-sm leading-6 text-secondary">
 			Usa únicamente tu cuenta de Google para entrar al planificador.
-		</p>
+		</p> -->
 
 		{#if user}
 			<div class="neo-control mt-7 p-5 text-left">
@@ -104,7 +104,7 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="mt-8 flex min-h-11 justify-center" bind:this={buttonElement}></div>
+			<div class="mt-8 flex min-h-11 scale-125 justify-center" bind:this={buttonElement}></div>
 			{#if isSubmitting}
 				<p class="mt-4 text-sm text-secondary">Verificando con el servidor…</p>
 			{/if}

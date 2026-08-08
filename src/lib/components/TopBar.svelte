@@ -51,7 +51,8 @@
 		on:click={() => navigate('/')}
 	>
 		<img class="h-10 w-10 shrink-0" src="/logo.svg" alt="" />
-		<span class="truncate font-display text-base font-extrabold tracking-tight sm:text-lg"
+		<span
+			class="truncate font-display text-base font-extrabold tracking-tight sm:text-xl xl:text-2xl"
 			>Horarios</span
 		>
 	</button>
@@ -103,14 +104,14 @@
 				>
 					{#if user.avatarUrl}
 						<img
-							class="h-8 w-8 rounded-lg object-cover"
+							class="h-8 w-8 rounded-full object-cover"
 							src={user.avatarUrl}
 							alt=""
 							referrerpolicy="no-referrer"
 						/>
 					{:else}
 						<span
-							class="grid h-8 w-8 place-items-center rounded-lg bg-accent-strong text-xs font-extrabold text-white"
+							class="grid h-8 w-8 place-items-center rounded-full bg-accent-strong text-xs font-extrabold text-white"
 							aria-hidden="true">{initial}</span
 						>
 					{/if}
