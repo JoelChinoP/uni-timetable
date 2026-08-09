@@ -3,11 +3,13 @@ import test from 'node:test';
 
 import {
 	buildPlannerEvents,
+	getCourseDisplayCode,
+	getCourseDisplayName,
 	groupRelatedCourses,
 	matchesCourseSearch,
 } from '../src/lib/utils/planner.ts';
 import type { Course, SelectedCourseGroup } from '../src/lib/types/planner.ts';
-import { buildCalendarResources } from '../src/lib/utils/calendarResources.ts';
+import { buildICalendar, escapeICalendarText } from '../src/lib/utils/calendarResources.ts';
 
 const course = (
 	id: number,
@@ -31,7 +33,11 @@ const course = (
 void test('groups theory and laboratory as one course unit', () => {
 	const theory = course(1, 'THEORY');
 	const lab = course(2, 'LABORATORY', 1);
+	lab.name = 'Lab - Curso 2';
+	lab.abbreviation = 'LAB-SIG2';
 	assert.deepEqual(groupRelatedCourses([theory, lab]), [{ key: '1', theory, laboratories: [lab] }]);
+	assert.equal(getCourseDisplayName(lab), 'Curso 2');
+	assert.equal(getCourseDisplayCode(lab), 'SIG2');
 	assert.equal(matchesCourseSearch(theory, 'sig1'), true);
 	theory.name = 'Cálculo y Lingüística';
 	assert.equal(matchesCourseSearch(theory, 'CALCULO'), true);
@@ -68,8 +74,9 @@ void test('only direct overlaps are reported as conflicts', () => {
 	assert.equal(events[0].conflictIds.includes(events[2].id), false);
 });
 
-void test('calendar export starts on the first matching weekday in range', () => {
+void test('iCalendar export is recurring, escaped and RFC-folded', () => {
 	const item = course(1, 'THEORY');
+	item.name = 'Programación, lógica; y diseño ágil';
 	const group = {
 		id: 1,
 		name: 'A',
@@ -89,22 +96,25 @@ void test('calendar export starts on the first matching weekday in range', () =>
 	};
 	item.groups = [group];
 	const { events } = buildPlannerEvents([{ course: item, group }]);
-	const resources = buildCalendarResources(
+	const calendar = buildICalendar(
 		events,
 		[{ hourNumber: 1, startTime: '07:00', endTime: '07:50' }],
 		'2026-08-08',
 		'2026-08-31',
+		'2026-B',
+		new Date('2026-08-09T12:00:00Z'),
 	);
-	assert.equal(resources[0].start.dateTime, '2026-08-10T07:00:00');
-	assert.deepEqual(resources[0].recurrence, ['RRULE:FREQ=WEEKLY;UNTIL=20260831T235959Z']);
-	assert.match(resources[0].id, /^[a-v0-9]{5,1024}$/);
-	assert.equal(
-		resources[0].id,
-		buildCalendarResources(
-			events,
-			[{ hourNumber: 1, startTime: '07:00', endTime: '07:50' }],
-			'2026-08-08',
-			'2026-08-31',
-		)[0].id,
-	);
+	assert.match(calendar, /^BEGIN:VCALENDAR\r\n/);
+	assert.match(calendar, /DTSTART;TZID=America\/Lima:20260810T070000\r\n/);
+	assert.match(calendar, /RRULE:FREQ=WEEKLY;COUNT=4;WKST=MO\r\n/);
+	assert.match(calendar, /SUMMARY;LANGUAGE=es:C1 · Programación\\, lógica\\; y diseño ágil/);
+	assert.match(calendar, /LOCATION;LANGUAGE=es:A-101\r\n/);
+	assert.match(calendar, /END:VCALENDAR\r\n$/);
+	assert.equal(escapeICalendarText('a,b;c\\d\ne'), 'a\\,b\\;c\\\\d\\ne');
+	for (const line of calendar.split('\r\n')) {
+		assert.ok(
+			new TextEncoder().encode(line).length <= 75,
+			`línea iCalendar demasiado larga: ${line}`,
+		);
+	}
 });

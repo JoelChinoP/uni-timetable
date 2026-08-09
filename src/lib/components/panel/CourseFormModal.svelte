@@ -2,6 +2,7 @@
 	import Modal from './Modal.svelte';
 	import type { Course, SessionMode } from '../../types/planner';
 	import type { CoursePayload, TeacherItem } from '../../api/catalog';
+	import { getCourseDisplayName } from '../../utils/planner';
 
 	export let courses: Course[] = [];
 	export let teachers: TeacherItem[] = [];
@@ -39,37 +40,25 @@
 	const labelClass = 'text-[10px] font-extrabold tracking-[0.16em] text-muted uppercase';
 </script>
 
-<Modal title={initialCourse ? `Editar · ${initialCourse.name}` : 'Nuevo curso'} {onClose}>
+<Modal
+	title={initialCourse ? `Editar · ${getCourseDisplayName(initialCourse)}` : 'Nuevo curso'}
+	{onClose}
+>
 	<form class="grid gap-3 sm:grid-cols-2" on:submit|preventDefault={submit}>
 		<label class="flex flex-col gap-1.5 sm:col-span-2">
 			<span class={labelClass}>Nombre</span>
-			<span class="neo-control flex min-h-11 items-center overflow-hidden text-sm text-primary">
-				{#if type === 'LABORATORY'}<span
-						class="border-r border-border-subtle px-3 font-bold text-accent">Lab -</span
-					>{/if}
-				<input
-					class="min-w-0 flex-1 bg-transparent px-3 py-2 outline-none"
-					bind:value={name}
-					required
-					type="text"
-				/>
-			</span>
+			<input class={fieldClass} bind:value={name} required type="text" />
 		</label>
 		<label class="flex flex-col gap-1.5">
 			<span class={labelClass}>Sigla</span>
-			<span class="neo-control flex min-h-11 items-center overflow-hidden text-sm text-primary">
-				{#if type === 'LABORATORY'}<span
-						class="border-r border-border-subtle px-3 font-bold text-accent">LAB-</span
-					>{/if}
-				<input
-					class="min-w-0 flex-1 bg-transparent px-3 py-2 outline-none"
-					bind:value={abbreviation}
-					maxlength={type === 'LABORATORY' ? 16 : 20}
-					placeholder="DSOO"
-					required
-					type="text"
-				/>
-			</span>
+			<input
+				class={fieldClass}
+				bind:value={abbreviation}
+				maxlength={type === 'LABORATORY' ? 18 : 20}
+				placeholder="DSOO"
+				required
+				type="text"
+			/>
 		</label>
 		<label class="flex flex-col gap-1.5">
 			<span class={labelClass}>Modalidad</span>
@@ -100,7 +89,7 @@
 				<select class={fieldClass} bind:value={theoryCourseId} required>
 					<option value={null} disabled>Selecciona…</option>
 					{#each theoryCourses as course (course.id)}
-						<option value={course.id}>{course.name}</option>
+						<option value={course.id}>{getCourseDisplayName(course)}</option>
 					{/each}
 				</select>
 			</label>

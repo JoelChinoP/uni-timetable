@@ -187,6 +187,7 @@ psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/m
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/002_planner_release.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/003_classroom_overlap.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/004_roles_and_lab_prefixes.sql
+psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/005_lab_prefixes_are_presentational.sql
 ```
 
 `ADMIN_EMAIL` no se inserta como SQL estático: al autenticar ese correo con Google, la API hace un

@@ -2,7 +2,7 @@
 	import Modal from './Modal.svelte';
 	import type { AcademicHour, Course, PlannerDay } from '../../types/planner';
 	import type { ClassroomItem, GroupPayload, GroupSessionPayload } from '../../api/catalog';
-	import { getDayLabel } from '../../utils/planner';
+	import { getCourseDisplayName, getDayLabel } from '../../utils/planner';
 
 	export let course: Course;
 	export let classrooms: ClassroomItem[] = [];
@@ -44,7 +44,10 @@
 	const labelClass = 'text-[10px] font-extrabold tracking-[0.16em] text-muted uppercase';
 </script>
 
-<Modal title={`${initialGroup ? 'Editar grupo' : 'Nuevo grupo'} · ${course.name}`} {onClose}>
+<Modal
+	title={`${initialGroup ? 'Editar grupo' : 'Nuevo grupo'} · ${getCourseDisplayName(course)}`}
+	{onClose}
+>
 	<form class="space-y-4" on:submit|preventDefault={submit}>
 		<div class="grid gap-3 sm:grid-cols-2">
 			<label class="flex flex-col gap-1.5">

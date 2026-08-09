@@ -15,8 +15,8 @@
 		groupRelatedCourses,
 		matchesCourseSearch,
 	} from '../utils/planner';
-	import { addResourcesToGoogleCalendar, renderSchedulePng } from '../utils/scheduleExport';
-	import { buildCalendarResources } from '../utils/calendarResources';
+	import { downloadICalendar, renderSchedulePng } from '../utils/scheduleExport';
+	import { buildICalendar } from '../utils/calendarResources';
 	import type { Course, PlannerConflict, PlannerData, PlannerEvent } from '../types/planner';
 	import type { AuthUser } from '../types/auth';
 
@@ -39,9 +39,7 @@
 	let conflicts: PlannerConflict[] = [];
 	let imagePreviewUrl = '';
 	let calendarModalOpen = false;
-	let exportingCalendar = false;
 	let exportError = '';
-	const googleClientId: string = String(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '').trim();
 	const localDate = (date: Date) =>
 		new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 	const today = new Date();
@@ -133,33 +131,27 @@
 		}
 	}
 
-	async function exportCalendar() {
-		if (!data || !user || !googleClientId || exportingCalendar) return;
+	function exportCalendar() {
+		if (!data) return;
 		exportError = '';
 		if (!calendarStart || !calendarEnd || calendarStart > calendarEnd) {
 			exportError = 'Selecciona un rango de fechas válido.';
 			return;
 		}
-		const resources = buildCalendarResources(
+		const calendar = buildICalendar(
 			events,
 			data.academicHours,
 			calendarStart,
 			calendarEnd,
+			data.termLabel,
 		);
-		if (resources.length === 0) {
+		if (!calendar.includes('BEGIN:VEVENT')) {
 			exportError = 'No hay horarios dentro de ese rango.';
 			return;
 		}
-		exportingCalendar = true;
-		try {
-			const created = await addResourcesToGoogleCalendar(googleClientId, user.email, resources);
-			calendarModalOpen = false;
-			shareFeedback = `${created} horarios sincronizados con Google Calendar`;
-		} catch (error) {
-			exportError = error instanceof Error ? error.message : 'No se pudo exportar a Calendar';
-		} finally {
-			exportingCalendar = false;
-		}
+		downloadICalendar(calendar);
+		calendarModalOpen = false;
+		shareFeedback = 'Archivo mi-horario.ics descargado';
 	}
 </script>
 
@@ -259,8 +251,6 @@
 						selectedGroups={$selection}
 						{summary}
 						{conflictingCourseIds}
-						{exportingCalendar}
-						calendarEnabled={!!user && !!googleClientId}
 						onSearchChange={(value) => (searchQuery = value)}
 						onYearsChange={(value) => (selectedYears = value)}
 						onToggleGroup={toggleGroup}
@@ -309,7 +299,7 @@
 		</div>
 	{/if}
 
-	{#if imagePreviewUrl}<Modal title="Previsualizar horario" onClose={() => (imagePreviewUrl = '')}>
+	{#if imagePreviewUrl}<Modal title="Previsualizar" onClose={() => (imagePreviewUrl = '')}>
 			<img
 				class="w-full rounded-2xl border border-border-subtle bg-surface"
 				src={imagePreviewUrl}

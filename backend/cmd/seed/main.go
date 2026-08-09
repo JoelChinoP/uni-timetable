@@ -191,7 +191,7 @@ func seed(ctx context.Context, pool *pgxpool.Pool, data *seedData) error {
 			if !ok {
 				return fmt.Errorf("curso %s tiene laboratorio sin teoría", key)
 			}
-			id, err := insertCourse(ctx, tx, careerID, course.Year, "Lab - "+course.Name, "LAB-"+course.LabCodes[0], "LAB-"+key, "LABORATORY", &theoryID, courseColors[indexOf(keys, key)%len(courseColors)])
+			id, err := insertCourse(ctx, tx, careerID, course.Year, course.Name, course.LabCodes[0]+"-L", key+"-L", "LABORATORY", &theoryID, courseColors[indexOf(keys, key)%len(courseColors)])
 			if err != nil {
 				return fmt.Errorf("curso lab %s: %w", key, err)
 			}

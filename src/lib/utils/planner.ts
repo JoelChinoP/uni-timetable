@@ -109,15 +109,13 @@ export function groupRelatedCourses(courses: Course[]): CourseBundle[] {
 }
 
 export function getCourseDisplayName(course: Course) {
-	if (course.type !== 'LABORATORY' || course.name.toLocaleLowerCase('es').startsWith('lab - ')) {
-		return course.name;
-	}
-	return `Lab - ${course.name}`;
+	return course.type === 'LABORATORY' ? course.name.replace(/^Lab\s*-\s*/i, '') : course.name;
 }
 
 export function getCourseDisplayCode(course: Course) {
-	const code = course.abbreviation.replace(/-L$/i, '');
-	return course.type === 'LABORATORY' && !code.startsWith('LAB-') ? `LAB-${code}` : code;
+	return course.type === 'LABORATORY'
+		? course.abbreviation.replace(/^LAB-/i, '').replace(/-L$/i, '')
+		: course.abbreviation;
 }
 
 export function getClassroomCourseGroups(courses: Course[], classroomId: number) {

@@ -4,6 +4,7 @@
 
 	export let title: string;
 	export let onClose: () => void;
+	export let wide = false;
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {
@@ -21,7 +22,7 @@
 	transition:fade
 >
 	<div
-		class="glass-panel flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[24px]"
+		class={`glass-panel flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-[24px] ${wide ? 'max-w-6xl' : 'max-w-2xl'}`}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="panel-modal-title"

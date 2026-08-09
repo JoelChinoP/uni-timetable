@@ -15,6 +15,7 @@
 	let menuOpen = false;
 	let menuRoot: HTMLDivElement;
 	let menuButton: HTMLButtonElement;
+	const isClassroomView = window.location.pathname === '/aulas';
 
 	$: firstName = user?.displayName.trim().split(/\s+/)[0] || user?.email || 'Usuario';
 	$: initial = firstName.charAt(0).toUpperCase();
@@ -43,7 +44,7 @@
 
 <a class="skip-link" href="#main-content">Saltar al contenido</a>
 <header
-	class="glass-panel sticky top-0 z-30 flex h-16 items-center justify-between border-x-0 border-t-0 px-3 sm:px-4"
+	class="topbar-surface sticky top-0 z-30 flex h-16 items-center justify-between px-3 sm:px-4"
 >
 	<button
 		class="flex min-w-0 items-center gap-2.5 rounded-xl p-1 text-primary"
@@ -88,22 +89,43 @@
 		<button
 			class="neo-button inline-flex h-11 items-center gap-2 px-3 text-sm font-bold text-primary"
 			type="button"
-			title="Ver horarios por aula"
-			on:click={() => navigate('/aulas')}
+			title={isClassroomView ? 'Volver al dashboard' : 'Ver horarios por aula'}
+			on:click={() => navigate(isClassroomView ? '/' : '/aulas')}
 		>
-			<svg
-				class="h-4.5 w-4.5 stroke-current"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke-width="1.8"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
-				><path
-					d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16M2 21h20M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2"
-				/></svg
-			>
-			<span class="hidden md:inline">Aulas</span>
+			{#if isClassroomView}<svg
+					class="h-4.5 w-4.5 stroke-current"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect
+						x="14"
+						y="3"
+						width="7"
+						height="7"
+						rx="1.5"
+					/><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect
+						x="14"
+						y="14"
+						width="7"
+						height="7"
+						rx="1.5"
+					/></svg
+				>{:else}<svg
+					class="h-4.5 w-4.5 stroke-current"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					><path
+						d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16M2 21h20M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2"
+					/></svg
+				>{/if}
+			<span class="hidden md:inline">{isClassroomView ? 'Dashboard' : 'Aulas'}</span>
 		</button>
 
 		<ThemeToggle theme={$theme} onToggle={theme.toggle} />

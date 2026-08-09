@@ -469,14 +469,24 @@ func normalizeCourseRequest(request courseRequest) (courseValues, error) {
 		typeValue:    database.AppModeType(request.Type),
 		academicYear: request.AcademicYear,
 	}
+	if request.Type != "THEORY" && request.Type != "LABORATORY" {
+		return values, fmt.Errorf("type debe ser THEORY o LABORATORY")
+	}
+	if request.Type == "LABORATORY" {
+		if strings.HasPrefix(strings.ToLower(values.name), "lab - ") {
+			values.name = strings.TrimSpace(values.name[len("lab - "):])
+		}
+		values.abbreviation = strings.TrimPrefix(values.abbreviation, "LAB-")
+		values.abbreviation = strings.TrimSuffix(values.abbreviation, "-L")
+		if values.abbreviation != "" {
+			values.abbreviation += "-L"
+		}
+	}
 	if len(values.name) < 3 || len(values.name) > 100 {
 		return values, fmt.Errorf("name debe tener entre 3 y 100 caracteres")
 	}
 	if values.abbreviation == "" || len(values.abbreviation) > 20 {
 		return values, fmt.Errorf("abbreviation debe tener entre 1 y 20 caracteres")
-	}
-	if request.Type != "THEORY" && request.Type != "LABORATORY" {
-		return values, fmt.Errorf("type debe ser THEORY o LABORATORY")
 	}
 	if request.AcademicYear < 1 || request.AcademicYear > 5 {
 		return values, fmt.Errorf("academicYear debe estar entre 1 y 5")
@@ -485,18 +495,6 @@ func normalizeCourseRequest(request courseRequest) (courseValues, error) {
 		return values, fmt.Errorf("un laboratorio necesita su curso de teoría")
 	}
 
-	if request.Type == "LABORATORY" {
-		if !strings.HasPrefix(strings.ToLower(values.name), "lab - ") {
-			values.name = "Lab - " + values.name
-		}
-		values.abbreviation = strings.TrimSuffix(values.abbreviation, "-L")
-		if !strings.HasPrefix(values.abbreviation, "LAB-") {
-			values.abbreviation = "LAB-" + values.abbreviation
-		}
-	}
-	if len(values.abbreviation) > 20 {
-		return values, fmt.Errorf("abbreviation debe tener como máximo 16 caracteres para laboratorios")
-	}
 	values.code = values.abbreviation
 	if !courseCodePattern.MatchString(values.code) {
 		return values, fmt.Errorf("código de curso inválido")

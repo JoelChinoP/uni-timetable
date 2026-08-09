@@ -12,6 +12,7 @@
 		buildPlannerEvents,
 		getClassroomCourseGroups,
 		getCourseDisplayCode,
+		getCourseDisplayName,
 	} from '../utils/planner';
 
 	export let user: AuthUser | null = null;
@@ -27,6 +28,7 @@
 	let detailCourse: Course | null = null;
 	let focusedSessionId: number | null = null;
 	let events: PlannerEvent[] = [];
+	let classroomLegend: { course: Course; groups: string }[] = [];
 
 	onMount(async () => {
 		loadError = '';
@@ -34,10 +36,27 @@
 			const [dashboard, nextClassrooms] = await Promise.all([getDashboard(), getClassrooms()]);
 			data = dashboard;
 			classrooms = nextClassrooms;
-			const requestedId = Number(new URLSearchParams(window.location.search).get('classroom'));
+			const search = new URLSearchParams(window.location.search);
+			const requestedId = Number(search.get('classroom'));
+			const years = [...new Set(dashboard.courses.map((course) => course.academicYear))].sort();
+			const requestedYear = Number(search.get('year'));
+			const activeYear = years.includes(requestedYear) ? requestedYear : (years[0] ?? null);
+			const busiestClassroom = nextClassrooms
+				.map((classroom) => ({
+					id: classroom.id,
+					groups: dashboard.courses
+						.filter((course) => !activeYear || course.academicYear === activeYear)
+						.reduce(
+							(count, course) =>
+								count + course.groups.filter((group) => group.classroomId === classroom.id).length,
+							0,
+						),
+				}))
+				.sort((left, right) => right.groups - left.groups)[0];
 			selectedClassroomId = nextClassrooms.some(({ id }) => id === requestedId)
 				? requestedId
-				: (nextClassrooms[0]?.id ?? null);
+				: (busiestClassroom?.id ?? nextClassrooms[0]?.id ?? null);
+			selectedYear = activeYear;
 		} catch (error) {
 			loadError = error instanceof Error ? error.message : 'No se pudieron cargar las aulas';
 		}
@@ -54,6 +73,23 @@
 		: [];
 	$: classroomCourseCount = new Set(classroomGroups.map(({ course }) => course.id)).size;
 	$: ({ events } = buildPlannerEvents(classroomGroups));
+	$: classroomYearHeading = selectedYear
+		? `${['', 'Primer', 'Segundo', 'Tercer', 'Cuarto', 'Quinto'][selectedYear]} año`
+		: 'Todos los años';
+	$: {
+		const legend: Record<number, { course: Course; groups: string[] }> = {};
+		for (const { course, group } of classroomGroups) {
+			const groups = legend[course.id]?.groups ?? [];
+			legend[course.id] = {
+				course,
+				groups: groups.includes(group.name) ? groups : [...groups, group.name],
+			};
+		}
+		classroomLegend = Object.values(legend).map(({ course, groups }) => ({
+			course,
+			groups: [...groups].sort().join(' · '),
+		}));
+	}
 	$: selectedGroups = Object.fromEntries(
 		classroomGroups.map(({ course, group }) => [String(course.id), group.id]),
 	);
@@ -71,7 +107,22 @@
 
 	function selectClassroom(classroomId: number) {
 		selectedClassroomId = classroomId;
-		window.history.replaceState({}, '', `/aulas?classroom=${classroomId}`);
+		updateLocation();
+	}
+
+	function selectYear(year: number | null) {
+		selectedYear = year;
+		updateLocation();
+	}
+
+	function updateLocation() {
+		const search = [
+			selectedClassroomId ? `classroom=${selectedClassroomId}` : '',
+			selectedYear ? `year=${selectedYear}` : '',
+		]
+			.filter(Boolean)
+			.join('&');
+		window.history.replaceState({}, '', `/aulas${search ? `?${search}` : ''}`);
 	}
 
 	function openEvent(event: PlannerEvent) {
@@ -98,8 +149,14 @@
 			<label class="neo-control grid min-w-44"
 				><span class="sr-only">Filtrar por año</span><select
 					class="h-11 bg-transparent px-3 text-sm font-bold text-primary outline-none"
-					bind:value={selectedYear}
-					><option value={null}>Todos los años</option>{#each availableYears as year (year)}<option
+					value={selectedYear ?? ''}
+					on:change={(event) =>
+						selectYear(
+							(event.currentTarget as HTMLSelectElement).value
+								? Number((event.currentTarget as HTMLSelectElement).value)
+								: null,
+						)}
+					><option value="">Todos los años</option>{#each availableYears as year (year)}<option
 							value={year}>Año {year}</option
 						>{/each}</select
 				></label
@@ -114,7 +171,7 @@
 			>
 				Cargando aulas…
 			</section>
-		{:else}<div class="grid min-w-0 flex-1 gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
+		{:else}<div class="grid min-w-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
 				<aside
 					class="neo-panel course-island flex max-h-[720px] min-h-0 flex-col overflow-hidden p-3"
 				>
@@ -149,24 +206,60 @@
 				</aside>
 				<section class="flex min-w-0 flex-col overflow-auto">
 					<div class="mb-2 flex items-center justify-between gap-3 px-1">
-						<div>
-							<p class="text-[10px] font-bold tracking-[0.16em] text-muted uppercase">
-								Aula seleccionada
-							</p>
-							<h2 class="text-lg font-extrabold text-primary">
-								{selectedClassroom?.code ?? 'Sin aula'}
-							</h2>
-						</div>
+						<h2
+							class="flex flex-wrap items-center gap-x-2 text-lg font-extrabold tracking-tight text-primary uppercase"
+						>
+							<span>{classroomYearHeading}</span><span aria-hidden="true">·</span><span
+								>{selectedClassroom?.type === 'LABORATORY' ? 'Laboratorio' : 'Teoría'}</span
+							><span aria-hidden="true">·</span><span>{selectedClassroom?.code ?? 'Sin aula'}</span>
+						</h2>
 						<span class="rounded-xl bg-accent-soft px-3 py-2 text-xs font-bold text-accent"
 							>{classroomCourseCount} cursos</span
 						>
 					</div>
-					<WeeklyPlanner
-						days={data.days}
-						academicHours={data.academicHours}
-						{events}
-						onOpenEvent={openEvent}
-					/>
+					<div class="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+						<div class="flex min-w-0 overflow-auto">
+							<WeeklyPlanner
+								days={data.days}
+								academicHours={data.academicHours}
+								{events}
+								onOpenEvent={openEvent}
+							/>
+						</div>
+						<aside
+							class="neo-panel h-fit max-h-[720px] overflow-hidden p-2"
+							aria-label="Cursos asignados al aula"
+						>
+							<div
+								class="grid grid-cols-[64px_minmax(0,1fr)_60px] gap-2 rounded-xl bg-[var(--ui-planner-header)] px-2 py-2 text-[9px] font-extrabold tracking-wide text-primary uppercase shadow-[var(--ui-shadow-control)]"
+							>
+								<span>Sigla</span><span>Asignatura</span><span>Grupos</span>
+							</div>
+							<div class="mt-2 max-h-[660px] divide-y divide-grid overflow-y-auto">
+								{#if classroomLegend.length === 0}<p class="p-4 text-center text-xs text-secondary">
+										Sin cursos asignados para este año.
+									</p>{/if}
+								{#each classroomLegend as item (item.course.id)}
+									<button
+										class="grid min-h-14 w-full grid-cols-[64px_minmax(0,1fr)_60px] items-center gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-surface-muted"
+										type="button"
+										on:click={() => {
+											detailCourse = item.course;
+											focusedSessionId = null;
+										}}
+									>
+										<strong class="text-[10px] text-accent"
+											>{getCourseDisplayCode(item.course)}</strong
+										>
+										<span class="text-[10px] leading-4 font-semibold text-primary"
+											>{getCourseDisplayName(item.course)}</span
+										>
+										<span class="text-[10px] font-bold text-secondary">{item.groups}</span>
+									</button>
+								{/each}
+							</div>
+						</aside>
+					</div>
 				</section>
 			</div>{/if}
 	</main>

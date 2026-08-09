@@ -1,58 +1,22 @@
 import type { AcademicHour, PlannerEvent } from '../types/planner';
-import type { CalendarResource } from './calendarResources';
-import { deriveBoardBounds, getAcademicTimeRange, getDayCode, plannerDays } from './planner';
+import { deriveBoardBounds, getAcademicTimeRange, getDayLabel, plannerDays } from './planner';
 
-export async function addResourcesToGoogleCalendar(
-	clientId: string,
-	expectedEmail: string,
-	resources: CalendarResource[],
-) {
-	const oauth = window.google?.accounts.oauth2;
-	if (!oauth) throw new Error('Google Identity Services todavía no está disponible.');
-	const accessToken = await new Promise<string>((resolve, reject) => {
-		const client = oauth.initTokenClient({
-			client_id: clientId,
-			scope:
-				'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
-			callback: (response) =>
-				response.access_token
-					? resolve(response.access_token)
-					: reject(new Error(response.error ?? 'Google no autorizó Calendar.')),
-			error_callback: () => reject(new Error('Se canceló la autorización de Google Calendar.')),
-		});
-		client.requestAccessToken({ prompt: 'select_account consent' });
-	});
+export function downloadICalendar(content: string) {
+	const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
+	const anchor = document.createElement('a');
+	anchor.href = url;
+	anchor.download = 'mi-horario.ics';
+	anchor.click();
+	window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
-	const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
-	const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers });
-	if (!profileResponse.ok) throw new Error('No se pudo verificar la cuenta de Google.');
-	const profile = (await profileResponse.json()) as { email?: string };
-	if (profile.email?.toLowerCase() !== expectedEmail.toLowerCase()) {
-		throw new Error(`Selecciona la cuenta ${expectedEmail} para exportar.`);
+function fitCanvasText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
+	if (context.measureText(text).width <= maxWidth) return text;
+	let fitted = text;
+	while (fitted.length > 1 && context.measureText(`${fitted}…`).width > maxWidth) {
+		fitted = fitted.slice(0, -1);
 	}
-
-	let created = 0;
-	for (const resource of resources) {
-		const response = await fetch(
-			'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-			{
-				method: 'POST',
-				headers,
-				body: JSON.stringify(resource),
-			},
-		);
-		if (response.status === 409) {
-			created += 1;
-			continue;
-		}
-		if (!response.ok) {
-			throw new Error(
-				`Calendar sincronizó ${created} de ${resources.length} horarios. Puedes reintentar sin duplicarlos.`,
-			);
-		}
-		created += 1;
-	}
-	return created;
+	return `${fitted}…`;
 }
 
 export function renderSchedulePng(
@@ -62,18 +26,22 @@ export function renderSchedulePng(
 	dark = false,
 ) {
 	const canvas = document.createElement('canvas');
-	canvas.width = 1600;
-	canvas.height = 1000;
+	const width = 1600;
+	const height = 1000;
+	const renderScale = 2;
+	canvas.width = width * renderScale;
+	canvas.height = height * renderScale;
 	const context = canvas.getContext('2d');
 	if (!context) throw new Error('Tu navegador no puede generar la imagen.');
+	context.scale(renderScale, renderScale);
 
 	const palette = dark
 		? {
-				background: '#050505',
-				surface: '#17191d',
-				grid: '#343840',
-				primary: '#f8fafc',
-				secondary: '#aeb6c2',
+				background: '#050604',
+				surface: '#191c17',
+				grid: '#3a3e32',
+				primary: '#f1eee4',
+				secondary: '#c4bdab',
 			}
 		: {
 				background: '#e8eef7',
@@ -89,48 +57,50 @@ export function renderSchedulePng(
 	const headerHeight = 62;
 	const bounds = deriveBoardBounds(academicHours);
 	const totalMinutes = (bounds.endHour - bounds.startHour) * 60;
-	const dayWidth = (canvas.width - left - right) / plannerDays.length;
-	const bodyHeight = canvas.height - top - bottom - headerHeight;
+	const dayWidth = (width - left - right) / plannerDays.length;
+	const bodyHeight = height - top - bottom - headerHeight;
 
 	context.fillStyle = palette.background;
-	context.fillRect(0, 0, canvas.width, canvas.height);
+	context.fillRect(0, 0, width, height);
 	context.fillStyle = palette.primary;
-	context.font = '800 36px system-ui, sans-serif';
+	context.font = '800 40px system-ui, sans-serif';
 	context.fillText('Mi horario semanal', 48, 62);
 	context.fillStyle = palette.secondary;
 	context.font = '600 19px system-ui, sans-serif';
 	context.fillText(termLabel, 49, 94);
 	context.fillStyle = palette.surface;
-	context.fillRect(48, top, canvas.width - 96, canvas.height - top - bottom);
+	context.fillRect(48, top, width - 96, height - top - bottom);
 
 	context.strokeStyle = palette.grid;
 	context.lineWidth = 1;
-	context.font = '800 17px system-ui, sans-serif';
+	context.font = '800 18px system-ui, sans-serif';
 	context.textAlign = 'center';
 	for (const [index, day] of plannerDays.entries()) {
 		const x = left + index * dayWidth;
 		context.fillStyle = palette.primary;
-		context.fillText(getDayCode(day), x + dayWidth / 2, top + 38);
+		context.fillText(getDayLabel(day).toUpperCase(), x + dayWidth / 2, top + 38);
 		context.beginPath();
 		context.moveTo(x, top);
-		context.lineTo(x, canvas.height - bottom);
+		context.lineTo(x, height - bottom);
 		context.stroke();
 	}
 	context.beginPath();
-	context.moveTo(canvas.width - right, top);
-	context.lineTo(canvas.width - right, canvas.height - bottom);
+	context.moveTo(width - right, top);
+	context.lineTo(width - right, height - bottom);
 	context.stroke();
 
 	context.textAlign = 'right';
-	context.font = '600 14px system-ui, sans-serif';
+	context.font = '700 16px system-ui, sans-serif';
 	for (let hour = bounds.startHour; hour <= bounds.endHour; hour += 1) {
 		const y = top + headerHeight + (((hour - bounds.startHour) * 60) / totalMinutes) * bodyHeight;
 		context.beginPath();
 		context.moveTo(48, y);
-		context.lineTo(canvas.width - right, y);
+		context.lineTo(width - right, y);
 		context.stroke();
-		context.fillStyle = palette.secondary;
-		context.fillText(`${String(hour).padStart(2, '0')}:00`, left - 12, y + 5);
+		if (hour < bounds.endHour) {
+			context.fillStyle = palette.secondary;
+			context.fillText(`${String(hour).padStart(2, '0')}:00`, left - 12, y + 6);
+		}
 	}
 
 	context.textAlign = 'left';
@@ -156,10 +126,14 @@ export function renderSchedulePng(
 		context.rect(x + 8, y, width - 12, height);
 		context.clip();
 		context.fillStyle = palette.primary;
-		context.font = '800 14px system-ui, sans-serif';
-		context.fillText(event.code, x + 12, y + 22);
-		context.font = '600 12px system-ui, sans-serif';
-		context.fillText(`${range.startTime} - ${range.endTime}`, x + 12, y + 41);
+		context.font = '800 18px system-ui, sans-serif';
+		context.fillText(fitCanvasText(context, event.code, width - 20), x + 12, y + 22);
+		if (height >= 58) {
+			context.font = '700 16px system-ui, sans-serif';
+			context.fillText(fitCanvasText(context, event.title, width - 20), x + 12, y + 43);
+		}
+		context.font = '600 14px system-ui, sans-serif';
+		context.fillText(`${range.startTime} - ${range.endTime}`, x + 12, y + (height >= 76 ? 64 : 43));
 		context.restore();
 		if (event.conflictIds.length > 0) {
 			context.fillStyle = '#f59e0b';

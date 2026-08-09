@@ -18,8 +18,8 @@
 	export let conflictingCourseIds: Set<number> = new Set();
 	export let onPreviewImage: () => void = () => {};
 	export let onExportCalendar: () => void = () => {};
-	export let calendarEnabled = false;
-	export let exportingCalendar = false;
+	let yearMenu: HTMLDetailsElement;
+	let yearMenuButton: HTMLElement;
 
 	$: bundles = groupRelatedCourses(courses);
 	$: yearLabel =
@@ -36,7 +36,19 @@
 				: [...selectedYears, year].sort(),
 		);
 	}
+
+	function handleWindowClick(event: MouseEvent) {
+		if (yearMenu?.open && !yearMenu.contains(event.target as Node)) yearMenu.open = false;
+	}
+
+	function handleWindowKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Escape' || !yearMenu?.open) return;
+		yearMenu.open = false;
+		yearMenuButton?.focus();
+	}
 </script>
+
+<svelte:window on:click={handleWindowClick} on:keydown={handleWindowKeydown} />
 
 <aside class="neo-panel course-island flex h-full min-h-0 flex-col overflow-hidden p-3">
 	<header class="flex items-center justify-between gap-2 px-1">
@@ -64,7 +76,7 @@
 					: 'Sin conflictos'}
 			</div>
 			<button
-				class="neo-button grid h-8.5 w-9 place-items-center text-secondary disabled:opacity-40 rounded-full"
+				class="neo-button grid h-8.5 w-9 place-items-center rounded-full text-secondary disabled:opacity-40"
 				type="button"
 				title="Previsualizar horario como imagen"
 				aria-label="Previsualizar horario como imagen"
@@ -87,13 +99,9 @@
 			<button
 				class="neo-button grid h-8.5 w-9 place-items-center text-secondary disabled:opacity-40"
 				type="button"
-				title={calendarEnabled
-					? 'Exportar a Google Calendar'
-					: 'Inicia sesión para exportar a Calendar'}
-				aria-label={calendarEnabled
-					? 'Exportar a Google Calendar'
-					: 'Inicia sesión para exportar a Calendar'}
-				disabled={!calendarEnabled || summary.selectedCourses === 0 || exportingCalendar}
+				title="Descargar horario para Calendar (.ics)"
+				aria-label="Descargar horario para Calendar en formato iCalendar"
+				disabled={summary.selectedCourses === 0}
 				on:click={onExportCalendar}
 			>
 				<svg
@@ -133,10 +141,11 @@
 				on:input={(event) => onSearchChange((event.currentTarget as HTMLInputElement).value)}
 			/>
 		</label>
-		<details class="neo-control relative text-[16px]">
+		<details class="neo-control relative text-[16px]" bind:this={yearMenu}>
 			<summary
 				class="flex h-10 min-w-16 cursor-pointer list-none items-center justify-between gap-1 px-2 font-bold text-primary"
 				aria-label="Filtrar por años"
+				bind:this={yearMenuButton}
 			>
 				<span>{yearLabel}</span><svg
 					class="h-4 w-4 shrink-0 stroke-current"

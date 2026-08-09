@@ -29,6 +29,7 @@
 		type TeacherItem,
 	} from '../api/catalog';
 	import type { Course, CourseGroup, PlannerData } from '../types/planner';
+	import { getCourseDisplayName } from '../utils/planner';
 	import {
 		canEditCatalog,
 		canManageUsers,
@@ -415,12 +416,16 @@
 							}}
 							onDeleteGroup={(group: CourseGroup, course: Course) =>
 								askDelete(
-									`el grupo ${group.name} de ${course.name}`,
+									`el grupo ${group.name} de ${getCourseDisplayName(course)}`,
 									() => deleteGroup(group.id),
 									'Grupo eliminado.',
 								)}
 							onDeleteCourse={(course: Course) =>
-								askDelete(course.name, () => deleteCourse(course.id), 'Curso eliminado.')}
+								askDelete(
+									getCourseDisplayName(course),
+									() => deleteCourse(course.id),
+									'Curso eliminado.',
+								)}
 						/>{:else}<p class="p-6 text-sm text-secondary">Cargando cursos…</p>{/if}
 				{:else if activeTab === 'classrooms'}
 					<header

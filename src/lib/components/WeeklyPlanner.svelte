@@ -57,30 +57,30 @@
 >
 	<div class="planner-alignment-pad flex min-h-[716px] min-w-0 flex-1 flex-col">
 		<div
-			class="planner-surface grid min-h-[680px] flex-1 grid-cols-[40px_minmax(0,1fr)] grid-rows-[38px_minmax(0,1fr)] overflow-hidden rounded-[17px] lg:grid-cols-[48px_minmax(0,1fr)]"
+			class="planner-surface grid min-h-[680px] flex-1 grid-cols-[52px_minmax(0,1fr)] grid-rows-[38px_minmax(0,1fr)] overflow-hidden rounded-[17px] lg:grid-cols-[48px_minmax(0,1fr)]"
 		>
-			<div class="planner-cell border-r border-b border-border-subtle"></div>
-			<div class="planner-cell grid border-b border-border-subtle" style={dayColumnsStyle}>
+			<div class="planner-header-cell border-r border-b border-border-subtle"></div>
+			<div class="planner-header-cell grid border-b border-border-subtle" style={dayColumnsStyle}>
 				{#each boardDays as day (day)}
 					<div
 						class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[14px]"
 						title={getDayLabel(day)}
 					>
-						<span class="lg:hidden">{getDayCode(day)}</span>
+						<span
+							class="grid h-6 w-6 place-items-center rounded-lg bg-surface/70 shadow-[var(--ui-shadow-control)] lg:hidden"
+							>{getDayCode(day)}</span
+						>
 						<span class="hidden lg:inline">{getDayLabel(day)}</span>
 					</div>
 				{/each}
 			</div>
-			<div class="planner-cell grid border-r border-border-subtle" style={rowsStyle}>
-				{#each boardHours as hour, index (hour)}
+			<div class="planner-header-cell grid border-r border-border-subtle" style={rowsStyle}>
+				{#each boardHours as hour (hour)}
 					<div
-						class="border-b border-border-subtle px-1 pt-1 text-right text-[11px] text-secondary"
+						class="border-b border-border-subtle px-1 pt-1 text-center text-[10px] text-secondary lg:text-right lg:text-[11px]"
 					>
-						<div
-							class={`flex h-full ${index === boardHours.length - 1 ? 'flex-col justify-between pb-1' : 'items-start justify-end'}`}
-						>
+						<div class="flex h-full items-start justify-center lg:justify-end">
 							<span style="font-weight:600;">{formatBoardHour(hour)}</span>
-							{#if index === boardHours.length - 1}<span>{formatBoardHour(hour + 1)}</span>{/if}
 						</div>
 					</div>
 				{/each}

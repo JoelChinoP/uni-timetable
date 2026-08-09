@@ -2,6 +2,8 @@
 	import type { AcademicHour, Course, CourseGroup } from '../../types/planner';
 	import {
 		formatTimeRange,
+		getCourseDisplayCode,
+		getCourseDisplayName,
 		getDayLabel,
 		getModeLabel,
 		matchesCourseSearch,
@@ -102,9 +104,11 @@
 						aria-hidden="true"
 					></span>
 					<span class="min-w-0 flex-1">
-						<span class="block truncate text-xs font-semibold text-primary">{course.name}</span>
+						<span class="block truncate text-xs font-semibold text-primary"
+							>{getCourseDisplayName(course)}</span
+						>
 						<span class="block text-[10px] font-semibold tracking-wide text-muted uppercase">
-							{course.abbreviation} · Año {course.academicYear}
+							{getCourseDisplayCode(course)} · Año {course.academicYear}
 							{course.type === 'LABORATORY' ? ' · Lab' : ''}
 						</span>
 					</span>
@@ -123,9 +127,13 @@
 			<div class="border-b border-border-subtle px-4 py-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<div class="min-w-0">
-						<h3 class="truncate text-sm font-bold text-primary">{selected.name}</h3>
+						<h3 class="truncate text-sm font-bold text-primary">
+							{getCourseDisplayName(selected)}
+						</h3>
 						<p class="mt-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
-							{selected.abbreviation} · Año {selected.academicYear} · {getModeLabel(selected.type)}
+							{getCourseDisplayCode(selected)} · Año {selected.academicYear} · {getModeLabel(
+								selected.type,
+							)}
 							{selected.teacher ? ` · ${selected.teacher.fullName}` : ''}
 						</p>
 					</div>
@@ -162,7 +170,7 @@
 						<button
 							class="grid h-10 w-10 place-items-center rounded-[10px] text-warning transition hover:bg-warning-soft"
 							type="button"
-							aria-label={`Eliminar ${selected.name}`}
+							aria-label={`Eliminar ${getCourseDisplayName(selected)}`}
 							on:click={() => selected && onDeleteCourse(selected)}
 						>
 							<svg

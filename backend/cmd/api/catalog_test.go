@@ -55,6 +55,23 @@ func TestValidateSessions(t *testing.T) {
 	}
 }
 
+func TestNormalizeLaboratoryCourseUsesStorageSuffix(t *testing.T) {
+	theoryCourseID := int32(1)
+	values, err := normalizeCourseRequest(courseRequest{
+		Name:           "Lab - Desarrollo de Software",
+		Abbreviation:   "LAB-DSOO",
+		Type:           "LABORATORY",
+		AcademicYear:   1,
+		TheoryCourseID: &theoryCourseID,
+	})
+	if err != nil {
+		t.Fatalf("laboratory rejected: %v", err)
+	}
+	if values.name != "Desarrollo de Software" || values.abbreviation != "DSOO-L" || values.code != "DSOO-L" {
+		t.Fatalf("unexpected normalized laboratory: %#v", values)
+	}
+}
+
 func TestCatalogWriteGates(t *testing.T) {
 	handler := routes(routeConfig{})
 	posts := []struct {
