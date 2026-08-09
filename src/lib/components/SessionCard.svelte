@@ -19,7 +19,7 @@
 </script>
 
 <button
-	class={`planner-event-enter absolute flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-l-[3px] px-1 py-1 text-center shadow-card transition duration-150 hover:z-10 hover:border-accent lg:rounded-[10px] lg:px-1.5 lg:text-left ${
+	class={`planner-event-enter absolute flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-l-[3px] px-1 py-2 text-center shadow-card transition duration-150 hover:z-10 hover:border-accent lg:rounded-[10px] lg:px-1.75 lg:text-left ${
 		event.conflictIds.length > 0
 			? 'ring-2 ring-warning/75 [clip-path:inset(0.5px_0_round_10px)] ring-inset'
 			: '[clip-path:inset(1.5px_0_round_10px)]'
@@ -38,7 +38,7 @@
 
 		{#if event.conflictIds.length > 0}
 			<svg
-				class="absolute right-0 h-2.5 w-2.5 shrink-0 fill-warning stroke-warning lg:h-3 lg:w-3"
+				class="absolute right-0 h-3 w-3 shrink-0 fill-warning stroke-warning lg:h-3 lg:w-3"
 				viewBox="0 0 24 24"
 				stroke-width="1.5"
 				aria-hidden="true"
@@ -49,9 +49,7 @@
 	</div>
 
 	<div class="hidden w-full text-center lg:flex">
-		<strong
-			class="-mt-1 line-clamp-2 px-0.5 text-[12px] leading-5 font-bold text-primary xl:text-[14px]"
-		>
+		<strong class="line-clamp-2 px-0.5 text-[12px] leading-5 font-bold text-primary xl:text-[14px]">
 			{displayTitle}
 		</strong>
 	</div>

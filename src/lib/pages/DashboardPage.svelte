@@ -40,6 +40,8 @@
 	let imagePreviewUrl = '';
 	let calendarModalOpen = false;
 	let exportError = '';
+	let shareTimer: ReturnType<typeof setTimeout> | undefined;
+	const YEAR_FILTER_STORAGE_KEY = 'uni-timetable:year-filter:v1';
 	const localDate = (date: Date) =>
 		new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 	const today = new Date();
@@ -56,7 +58,49 @@
 		}
 	}
 
-	onMount(() => void load());
+	function loadSelectedYears() {
+		try {
+			const value = JSON.parse(window.localStorage.getItem(YEAR_FILTER_STORAGE_KEY) ?? '[]');
+			return Array.isArray(value)
+				? [
+						...new Set(value.filter((year): year is number => Number.isInteger(year) && year > 0)),
+					].sort()
+				: [];
+		} catch {
+			return [];
+		}
+	}
+
+	function setSelectedYears(years: number[]) {
+		selectedYears = years;
+		try {
+			window.localStorage.setItem(YEAR_FILTER_STORAGE_KEY, JSON.stringify(years));
+		} catch {
+			// ponytail: el filtro sigue funcionando aunque el navegador bloquee el almacenamiento.
+		}
+	}
+
+	function clearShareTimer() {
+		if (shareTimer) clearTimeout(shareTimer);
+		shareTimer = undefined;
+	}
+
+	function dismissShare() {
+		clearShareTimer();
+		shareFeedback = '';
+		shareUrl = '';
+	}
+
+	function scheduleShareDismissal() {
+		clearShareTimer();
+		shareTimer = setTimeout(dismissShare, 10_000);
+	}
+
+	onMount(() => {
+		selectedYears = loadSelectedYears();
+		void load();
+		return clearShareTimer;
+	});
 
 	$: allCourses = data?.courses ?? [];
 	$: availableYears = [...new Set(allCourses.map((course) => course.academicYear))].sort();
@@ -90,7 +134,7 @@
 	async function shareBoard() {
 		if (sharing || summary.selectedCourses === 0) return;
 		sharing = true;
-		shareFeedback = '';
+		dismissShare();
 		try {
 			const { id } = await createSharedTimetable($selection);
 			shareUrl = `${window.location.origin}/s/${id}`;
@@ -100,6 +144,7 @@
 			} catch {
 				shareFeedback = 'Enlace listo para copiar';
 			}
+			scheduleShareDismissal();
 		} catch (error) {
 			shareFeedback = error instanceof Error ? error.message : 'No se pudo crear el enlace';
 			shareUrl = '';
@@ -118,7 +163,7 @@
 	}
 
 	function previewImage() {
-		if (!data || events.length === 0) return;
+		if (!user || !data || events.length === 0) return;
 		try {
 			imagePreviewUrl = renderSchedulePng(
 				events,
@@ -132,7 +177,7 @@
 	}
 
 	function exportCalendar() {
-		if (!data) return;
+		if (!user || !data) return;
 		exportError = '';
 		if (!calendarStart || !calendarEnd || calendarStart > calendarEnd) {
 			exportError = 'Selecciona un rango de fechas válido.';
@@ -151,7 +196,7 @@
 		}
 		downloadICalendar(calendar);
 		calendarModalOpen = false;
-		shareFeedback = 'Archivo mi-horario.ics descargado';
+		shareFeedback = 'Archivo .ics descargado';
 	}
 </script>
 
@@ -228,7 +273,7 @@
 				class="grid min-h-0 w-full min-w-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,400px)]"
 			>
 				<div
-					class="order-2 min-h-[32rem] min-w-0 flex-1 overflow-auto lg:order-1 lg:flex lg:min-h-0"
+					class="order-2 min-h-[32rem] min-w-0 flex-1 overflow-auto rounded-[17px] lg:order-1 lg:flex lg:min-h-0"
 					class:hidden={mobileView !== 'planner'}
 				>
 					<WeeklyPlanner
@@ -251,12 +296,14 @@
 						selectedGroups={$selection}
 						{summary}
 						{conflictingCourseIds}
+						showExports={!!user}
 						onSearchChange={(value) => (searchQuery = value)}
-						onYearsChange={(value) => (selectedYears = value)}
+						onYearsChange={setSelectedYears}
 						onToggleGroup={toggleGroup}
 						onClearSelection={clearSelection}
 						onPreviewImage={previewImage}
 						onExportCalendar={() => {
+							if (!user) return;
 							exportError = '';
 							calendarModalOpen = true;
 						}}
@@ -281,7 +328,7 @@
 					class="grid h-10 w-10 place-items-center rounded-xl text-secondary hover:bg-surface-muted"
 					type="button"
 					aria-label="Cerrar aviso"
-					on:click={() => (shareFeedback = '')}>×</button
+					on:click={dismissShare}>×</button
 				>
 			</div>
 			{#if shareUrl}<div class="mt-2 flex gap-2">
@@ -309,14 +356,14 @@
 				<a
 					class="inline-flex min-h-11 items-center rounded-xl bg-accent-strong px-4 text-sm font-bold text-white"
 					href={imagePreviewUrl}
-					download="mi-horario.png">Descargar PNG</a
+					download="2026B.png">Descargar PNG</a
 				>
 			</div>
 		</Modal>{/if}
 
-	{#if calendarModalOpen}<Modal
-			title="Exportar a Google Calendar"
-			onClose={() => !exportingCalendar && (calendarModalOpen = false)}
+	{#if calendarModalOpen && user}<Modal
+			title="Descargar para Calendar"
+			onClose={() => (calendarModalOpen = false)}
 		>
 			<form class="grid gap-3 sm:grid-cols-2" on:submit|preventDefault={exportCalendar}>
 				<label class="flex flex-col gap-1.5"
@@ -341,8 +388,8 @@
 					/></label
 				>
 				<p class="text-xs leading-5 text-secondary sm:col-span-2">
-					Se crearán eventos semanales en <strong class="text-primary">{user?.email}</strong>.
-					Google pedirá confirmar esa cuenta y el permiso mínimo de edición de eventos.
+					Se descargará un archivo <strong class="text-primary">.ics</strong> con eventos semanales para
+					importarlo en Calendar.
 				</p>
 				{#if exportError}<p
 						class="rounded-xl bg-warning-soft px-3 py-2 text-sm font-semibold text-warning sm:col-span-2"
@@ -351,10 +398,8 @@
 						{exportError}
 					</p>{/if}
 				<button
-					class="min-h-11 rounded-xl bg-accent-strong px-4 text-sm font-bold text-white disabled:opacity-50 sm:col-span-2"
-					type="submit"
-					disabled={exportingCalendar}
-					>{exportingCalendar ? 'Exportando…' : 'Autorizar y exportar'}</button
+					class="min-h-11 rounded-xl bg-accent-strong px-4 text-sm font-bold text-white sm:col-span-2"
+					type="submit">Descargar .ics</button
 				>
 			</form>
 		</Modal>{/if}

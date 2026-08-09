@@ -1,6 +1,6 @@
 <script lang="ts">
 	import CourseCard from './CourseCard.svelte';
-	import { groupRelatedCourses } from '../utils/planner';
+	import { getAcademicYearLabel, groupRelatedCourses } from '../utils/planner';
 	import type { Course } from '../types/planner';
 
 	export let termLabel: string;
@@ -16,6 +16,7 @@
 	export let onClearSelection: () => void;
 	export let onOpenDetails: (course: Course) => void;
 	export let conflictingCourseIds: Set<number> = new Set();
+	export let showExports = false;
 	export let onPreviewImage: () => void = () => {};
 	export let onExportCalendar: () => void = () => {};
 	let yearMenu: HTMLDetailsElement;
@@ -75,48 +76,50 @@
 					? `${summary.conflictCount} conflicto${summary.conflictCount === 1 ? '' : 's'}`
 					: 'Sin conflictos'}
 			</div>
-			<button
-				class="neo-button grid h-8.5 w-9 place-items-center rounded-full text-secondary disabled:opacity-40"
-				type="button"
-				title="Previsualizar horario como imagen"
-				aria-label="Previsualizar horario como imagen"
-				disabled={summary.selectedCourses === 0}
-				on:click={onPreviewImage}
-			>
-				<svg
-					class="h-6 w-6 stroke-current"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke-width="1.8"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-					><rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="10" r="1.5" /><path
-						d="m5.5 17 4.5-4 3 2.5 2.5-2 3 3.5"
-					/></svg
+			{#if showExports}<button
+					class="neo-button grid h-8.5 w-9 place-items-center rounded-full text-secondary disabled:opacity-40"
+					type="button"
+					title="Previsualizar horario como imagen"
+					aria-label="Previsualizar horario como imagen"
+					disabled={summary.selectedCourses === 0}
+					on:click={onPreviewImage}
 				>
-			</button>
-			<button
-				class="neo-button grid h-8.5 w-9 place-items-center text-secondary disabled:opacity-40"
-				type="button"
-				title="Descargar horario para Calendar (.ics)"
-				aria-label="Descargar horario para Calendar en formato iCalendar"
-				disabled={summary.selectedCourses === 0}
-				on:click={onExportCalendar}
-			>
-				<svg
-					class="h-6 w-6 stroke-current"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke-width="1.8"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-					><rect x="3" y="5" width="18" height="16" rx="3" /><path
-						d="M8 3v4M16 3v4M3 10h18M8 14h3v3H8z"
-					/></svg
+					<svg
+						class="h-6 w-6 stroke-current"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><rect x="3" y="5" width="18" height="14" rx="3" /><circle
+							cx="9"
+							cy="10"
+							r="1.5"
+						/><path d="m5.5 17 4.5-4 3 2.5 2.5-2 3 3.5" /></svg
+					>
+				</button>
+				<button
+					class="neo-button grid h-8.5 w-9 place-items-center text-secondary disabled:opacity-40"
+					type="button"
+					title="Descargar formato para Calendar (.ics)"
+					aria-label="Descargar horario para Calendar en formato iCalendar"
+					disabled={summary.selectedCourses === 0}
+					on:click={onExportCalendar}
 				>
-			</button>
+					<svg
+						class="h-6 w-6 stroke-current"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><rect x="3" y="5" width="18" height="16" rx="3" /><path
+							d="M8 3v4M16 3v4M3 10h18M8 14h3v3H8z"
+						/></svg
+					>
+				</button>{/if}
 		</div>
 	</header>
 
@@ -163,7 +166,7 @@
 							type="checkbox"
 							checked={selectedYears.includes(year)}
 							on:change={() => toggleYear(year)}
-						/>{year}° año</label
+						/>{getAcademicYearLabel(year)}</label
 					>{/each}
 				{#if selectedYears.length > 0}<button
 						class="mt-1 min-h-9 w-full rounded-lg text-xs font-bold text-accent hover:bg-accent-soft"

@@ -67,6 +67,10 @@ export function getModeLabel(mode: SessionMode) {
 	return modeLabels[mode];
 }
 
+export function getAcademicYearLabel(year: number) {
+	return year === 1 ? 'Primer año' : `${year}.º año`;
+}
+
 export function getSelectedCourseGroups(
 	courses: Course[],
 	selectedGroups: Record<string, number | null>,

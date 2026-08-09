@@ -11,6 +11,7 @@
 	import {
 		buildPlannerEvents,
 		getClassroomCourseGroups,
+		getAcademicYearLabel,
 		getCourseDisplayCode,
 		getCourseDisplayName,
 	} from '../utils/planner';
@@ -73,9 +74,7 @@
 		: [];
 	$: classroomCourseCount = new Set(classroomGroups.map(({ course }) => course.id)).size;
 	$: ({ events } = buildPlannerEvents(classroomGroups));
-	$: classroomYearHeading = selectedYear
-		? `${['', 'Primer', 'Segundo', 'Tercer', 'Cuarto', 'Quinto'][selectedYear]} año`
-		: 'Todos los años';
+	$: classroomYearHeading = selectedYear ? getAcademicYearLabel(selectedYear) : 'Todos los años';
 	$: {
 		const legend: Record<number, { course: Course; groups: string[] }> = {};
 		for (const { course, group } of classroomGroups) {
@@ -157,7 +156,7 @@
 								: null,
 						)}
 					><option value="">Todos los años</option>{#each availableYears as year (year)}<option
-							value={year}>Año {year}</option
+							value={year}>{getAcademicYearLabel(year)}</option
 						>{/each}</select
 				></label
 			>
@@ -171,7 +170,7 @@
 			>
 				Cargando aulas…
 			</section>
-		{:else}<div class="grid min-w-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+		{:else}<div class="grid min-w-0 flex-1 gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
 				<aside
 					class="neo-panel course-island flex max-h-[720px] min-h-0 flex-col overflow-hidden p-3"
 				>
@@ -217,7 +216,7 @@
 							>{classroomCourseCount} cursos</span
 						>
 					</div>
-					<div class="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+					<div class="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
 						<div class="flex min-w-0 overflow-auto">
 							<WeeklyPlanner
 								days={data.days}
@@ -231,7 +230,7 @@
 							aria-label="Cursos asignados al aula"
 						>
 							<div
-								class="grid grid-cols-[64px_minmax(0,1fr)_60px] gap-2 rounded-xl bg-[var(--ui-planner-header)] px-2 py-2 text-[9px] font-extrabold tracking-wide text-primary uppercase shadow-[var(--ui-shadow-control)]"
+								class="grid grid-cols-[62px_minmax(0,1fr)_68px] gap-2 rounded-xl bg-[var(--ui-planner-header)] px-2 py-2 text-[9px] font-extrabold tracking-wide text-primary uppercase shadow-[var(--ui-shadow-control)]"
 							>
 								<span>Sigla</span><span>Asignatura</span><span>Grupos</span>
 							</div>
@@ -241,7 +240,7 @@
 									</p>{/if}
 								{#each classroomLegend as item (item.course.id)}
 									<button
-										class="grid min-h-14 w-full grid-cols-[64px_minmax(0,1fr)_60px] items-center gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-surface-muted"
+										class="grid min-h-14 w-full grid-cols-[62px_minmax(0,1fr)_68px] items-center gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-surface-muted"
 										type="button"
 										on:click={() => {
 											detailCourse = item.course;

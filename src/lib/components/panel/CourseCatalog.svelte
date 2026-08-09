@@ -38,7 +38,7 @@
 </script>
 
 <div
-	class="grid divide-y divide-grid lg:grid-cols-[minmax(0,270px)_minmax(0,1fr)] lg:divide-x lg:divide-y-0"
+	class="grid divide-y divide-grid lg:grid-cols-[minmax(0,375px)_minmax(0,1fr)] lg:divide-x lg:divide-y-0"
 >
 	<div class="flex max-h-[42vh] min-h-0 flex-col lg:h-[62vh] lg:max-h-none">
 		<div class="m-3 space-y-2">

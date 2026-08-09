@@ -300,7 +300,7 @@
 
 <div class="min-h-dvh">
 	<TopBar {user} {onNavigate} {onLogout} />
-	<main id="main-content" class="mx-auto w-full max-w-7xl p-3 sm:p-5 lg:p-6">
+	<main id="main-content" class="mx-auto w-full max-w-[1750px] p-3 sm:p-5 lg:p-6">
 		{#if !user}
 			<section class="neo-panel p-8 text-center">
 				<h1 class="text-3xl font-extrabold text-primary">Necesitas iniciar sesión</h1>

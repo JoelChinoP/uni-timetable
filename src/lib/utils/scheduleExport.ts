@@ -5,7 +5,7 @@ export function downloadICalendar(content: string) {
 	const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
 	const anchor = document.createElement('a');
 	anchor.href = url;
-	anchor.download = 'mi-horario.ics';
+	anchor.download = '2026B.ics';
 	anchor.click();
 	window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }

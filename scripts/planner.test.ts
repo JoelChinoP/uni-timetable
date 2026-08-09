@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
 	buildPlannerEvents,
+	getAcademicYearLabel,
 	getCourseDisplayCode,
 	getCourseDisplayName,
 	groupRelatedCourses,
@@ -38,6 +39,8 @@ void test('groups theory and laboratory as one course unit', () => {
 	assert.deepEqual(groupRelatedCourses([theory, lab]), [{ key: '1', theory, laboratories: [lab] }]);
 	assert.equal(getCourseDisplayName(lab), 'Curso 2');
 	assert.equal(getCourseDisplayCode(lab), 'SIG2');
+	assert.equal(getAcademicYearLabel(1), 'Primer año');
+	assert.equal(getAcademicYearLabel(2), '2.º año');
 	assert.equal(matchesCourseSearch(theory, 'sig1'), true);
 	theory.name = 'Cálculo y Lingüística';
 	assert.equal(matchesCourseSearch(theory, 'CALCULO'), true);
