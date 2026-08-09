@@ -43,7 +43,7 @@
 
 <a class="skip-link" href="#main-content">Saltar al contenido</a>
 <header
-	class="glass-panel sticky top-0 z-30 flex h-16 items-center justify-between border-x-0 border-t-0 px-3 sm:px-5"
+	class="glass-panel sticky top-0 z-30 flex h-16 items-center justify-between border-x-0 border-t-0 px-3 sm:px-4"
 >
 	<button
 		class="flex min-w-0 items-center gap-2.5 rounded-xl p-1 text-primary"

@@ -27,7 +27,7 @@
 			></span>{/if}
 	</div>
 	<div class="flex w-full text-center">
-		<strong class="line-clamp-2 text-[12px] leading-5 font-bold text-primary xl:text-[15px]"
+		<strong class="-mt-1 line-clamp-2 text-[12px] leading-5 font-bold text-primary xl:text-[14px]"
 		>{event.title}</strong>
 	</div>
 	<span class="mt-auto truncate text-[10px] leading-3 text-secondary xl:text-[10px] font-semibold">{timeLabel}</span

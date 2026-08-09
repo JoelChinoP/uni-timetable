@@ -119,7 +119,7 @@
 
 	<main
 		id="main-content"
-		class="mx-auto flex min-h-0 w-full max-w-[2400px] flex-1 flex-col gap-3 overflow-x-clip px-3 py-3 sm:px-4 lg:overflow-hidden xl:px-5"
+		class="mx-auto flex min-h-0 w-full max-w-[2400px] flex-1 flex-col gap-3 overflow-x-clip px-3 py-3 sm:px-4 lg:overflow-hidden xl:px-4"
 	>
 		{#if loadError}
 			<section class="neo-panel grid flex-1 place-items-center p-8 text-center" role="alert">
