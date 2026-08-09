@@ -2,20 +2,16 @@
 	import CourseCard from './CourseCard.svelte';
 	import { groupRelatedCourses } from '../utils/planner';
 	import type { Course } from '../types/planner';
-	import type { ClassroomItem } from '../api/catalog';
 
 	export let termLabel: string;
 	export let searchQuery = '';
-	export let selectedYear: number | null = null;
+	export let selectedYears: number[] = [];
 	export let availableYears: number[] = [];
-	export let classrooms: ClassroomItem[] = [];
-	export let selectedClassroomId: number | null = null;
 	export let courses: Course[] = [];
 	export let selectedGroups: Record<string, number> = {};
 	export let summary: { selectedCourses: number; conflictCount: number };
 	export let onSearchChange: (value: string) => void;
-	export let onYearChange: (year: number | null) => void;
-	export let onClassroomChange: (classroomId: number | null) => void;
+	export let onYearsChange: (years: number[]) => void;
 	export let onToggleGroup: (courseId: number, groupId: number) => void;
 	export let onClearSelection: () => void;
 	export let onOpenDetails: (course: Course) => void;
@@ -26,6 +22,20 @@
 	export let exportingCalendar = false;
 
 	$: bundles = groupRelatedCourses(courses);
+	$: yearLabel =
+		selectedYears.length === 0
+			? 'Año'
+			: selectedYears.length === 1
+				? `${selectedYears[0]}°`
+				: selectedYears.map((year) => String(year)[0]).join(', ');
+
+	function toggleYear(year: number) {
+		onYearsChange(
+			selectedYears.includes(year)
+				? selectedYears.filter((selectedYear) => selectedYear !== year)
+				: [...selectedYears, year].sort(),
+		);
+	}
 </script>
 
 <aside class="neo-panel course-island flex h-full min-h-0 flex-col overflow-hidden p-3">
@@ -36,12 +46,12 @@
 		</div>
 		<div class="flex items-center gap-1">
 			<div
-				class={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-bold ${summary.conflictCount > 0 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}
+				class={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold ${summary.conflictCount > 0 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}
 				role="status"
 				aria-live="polite"
 			>
 				{#if summary.conflictCount > 0}<svg
-						class="h-3.5 w-3.5 stroke-current"
+						class="h-4 w-4 stroke-current"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke-width="2"
@@ -54,7 +64,7 @@
 					: 'Sin conflictos'}
 			</div>
 			<button
-				class="neo-button grid h-10 w-10 place-items-center text-secondary disabled:opacity-40"
+				class="neo-button grid h-8.5 w-9 place-items-center text-secondary disabled:opacity-40 rounded-full"
 				type="button"
 				title="Previsualizar horario como imagen"
 				aria-label="Previsualizar horario como imagen"
@@ -62,7 +72,7 @@
 				on:click={onPreviewImage}
 			>
 				<svg
-					class="h-5 w-5 stroke-current"
+					class="h-6 w-6 stroke-current"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke-width="1.8"
@@ -75,7 +85,7 @@
 				>
 			</button>
 			<button
-				class="neo-button grid h-10 w-10 place-items-center text-secondary disabled:opacity-40"
+				class="neo-button grid h-8.5 w-9 place-items-center text-secondary disabled:opacity-40"
 				type="button"
 				title={calendarEnabled
 					? 'Exportar a Google Calendar'
@@ -87,7 +97,7 @@
 				on:click={onExportCalendar}
 			>
 				<svg
-					class="h-5 w-5 stroke-current"
+					class="h-6 w-6 stroke-current"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke-width="1.8"
@@ -123,21 +133,36 @@
 				on:input={(event) => onSearchChange((event.currentTarget as HTMLInputElement).value)}
 			/>
 		</label>
-		<label class="neo-control grid px-1 text-[16px]" aria-label="Filtrar por año">
-			<select
-				class="min-w-0 bg-transparent px-1 font-bold text-primary outline-none"
-				value={selectedYear ?? ''}
-				on:change={(event) =>
-					onYearChange(
-						(event.currentTarget as HTMLSelectElement).value
-							? Number((event.currentTarget as HTMLSelectElement).value)
-							: null,
-					)}
+		<details class="neo-control relative text-[16px]">
+			<summary
+				class="flex h-10 min-w-16 cursor-pointer list-none items-center justify-between gap-1 px-2 font-bold text-primary"
+				aria-label="Filtrar por años"
 			>
-				<option value="">#</option>
-				{#each availableYears as year (year)}<option value={year}>{year}°</option>{/each}
-			</select>
-		</label>
+				<span>{yearLabel}</span><svg
+					class="h-4 w-4 shrink-0 stroke-current"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke-width="2"
+					aria-hidden="true"><path d="m7 9 5 5 5-5" /></svg
+				>
+			</summary>
+			<div class="glass-panel absolute right-0 z-20 mt-1 w-36 rounded-xl p-2">
+				{#each availableYears as year (year)}<label
+						class="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 text-xs font-bold text-primary hover:bg-surface-muted"
+						><input
+							class="h-4 w-4 accent-accent"
+							type="checkbox"
+							checked={selectedYears.includes(year)}
+							on:change={() => toggleYear(year)}
+						/>{year}° año</label
+					>{/each}
+				{#if selectedYears.length > 0}<button
+						class="mt-1 min-h-9 w-full rounded-lg text-xs font-bold text-accent hover:bg-accent-soft"
+						type="button"
+						on:click={() => onYearsChange([])}>Todos</button
+					>{/if}
+			</div>
+		</details>
 		<button
 			class="grid h-10 w-10 place-items-center rounded-xl bg-warning-soft text-warning transition hover:bg-warning/20 disabled:opacity-40"
 			type="button"
@@ -156,24 +181,6 @@
 			>
 		</button>
 	</div>
-	<label class="neo-control mt-1 grid px-2 text-[16px]" aria-label="Filtrar por aula">
-		<select
-			class="h-9 min-w-0 bg-transparent px-1 font-bold text-primary outline-none"
-			value={selectedClassroomId ?? ''}
-			on:change={(event) =>
-				onClassroomChange(
-					(event.currentTarget as HTMLSelectElement).value
-						? Number((event.currentTarget as HTMLSelectElement).value)
-						: null,
-				)}
-		>
-			<option value="">Todas las aulas</option>
-			{#each classrooms as classroom (classroom.id)}<option value={classroom.id}
-					>{classroom.code} · {classroom.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}</option
-				>{/each}
-		</select>
-	</label>
-
 	<div class="mt-0.75 flex items-center justify-between px-4 text-[11px] text-secondary">
 		<span><strong class="text-primary">{summary.selectedCourses}</strong> seleccionados</span>
 		<span>{bundles.length} cursos</span>

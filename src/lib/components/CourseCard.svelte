@@ -12,9 +12,6 @@
 	$: related = [...(bundle.theory ? [bundle.theory] : []), ...bundle.laboratories];
 	$: selectedCount = related.filter((course) => selectedGroups[String(course.id)]).length;
 	$: hasConflict = related.some((course) => conflictingCourseIds.has(course.id));
-	$: wideModes = related.some(
-		(course) => course.groups.length > 3 || getCourseDisplayCode(course).length > 10,
-	);
 
 	function getContrastTextColor(hexColor: string) {
 		const normalized = hexColor.replace('#', '');
@@ -51,7 +48,7 @@
 			>
 				{getCourseDisplayName(primary)}
 			</h3>
-			<p class="	text-[10px] font-bold tracking-[0.12em] text-muted uppercase">
+			<p class="text-[10px] font-bold tracking-[0.12em] text-muted uppercase">
 				{getCourseDisplayCode(primary)} · {primary.academicYear}° año
 			</p>
 		</button>
@@ -88,19 +85,37 @@
 	<div class="mt-1 flex flex-wrap gap-1">
 		{#each related as course (course.id)}
 			<section
-				class={`min-w-0 rounded-md bg-surface-muted/70 p-1 ${wideModes || related.length === 1 ? 'basis-full' : 'basis-[calc(50%_-_0.125rem)]'}`}
+				class={`relative min-w-0 rounded-md bg-surface-muted/70 p-1 ${related.length === 1 ? 'basis-full' : 'basis-[calc(50%_-_0.125rem)]'}`}
 				aria-label={course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}
 			>
-				<div class="mb-1 flex items-center justify-between gap-2">
-					<span class="min-w-0 text-[9px] font-extrabold tracking-[0.12em] text-secondary uppercase"
-						>{course.type === 'THEORY'
-							? 'Teoría'
-							: `${getCourseDisplayName(course)} · ${getCourseDisplayCode(course)}`}</span
+				<div class="mb-1 flex items-center">
+					<span
+						class="min-w-0 text-[9px] font-extrabold tracking-[0.12em] text-secondary uppercase"
 					>
-					{#if selectedGroups[String(course.id)]}<span class="text-[9px] font-bold text-accent"
-							>Seleccionado</span
-						>{/if}
+						{course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}
+					</span>
+
+					{#if selectedGroups[String(course.id)]}
+						<span
+							class="absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-accent text-accent-contrast"
+							title="Seleccionado"
+						>
+							<svg
+								class="h-3 w-3 stroke-current"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke-width="3"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="m6 12 4 4 8-9" />
+							</svg>
+							<span class="sr-only">Seleccionado</span>
+						</span>
+					{/if}
 				</div>
+
 				{#if course.groups.length === 0}
 					<p class="text-[14px] text-muted">Sin grupos</p>
 				{:else}
@@ -115,8 +130,10 @@
 								style={group.id === selectedGroups[String(course.id)]
 									? `background:${course.color};border-color:transparent;color:${getContrastTextColor(course.color)};font-weight:600;`
 									: 'font-weight:600;'}
-								on:click={() => onToggleGroup(course.id, group.id)}>{group.name}</button
+								on:click={() => onToggleGroup(course.id, group.id)}
 							>
+								{group.name}
+							</button>
 						{/each}
 					</div>
 				{/if}

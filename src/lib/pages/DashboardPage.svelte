@@ -7,7 +7,6 @@
 	import CourseDetailModal from '../components/CourseDetailModal.svelte';
 	import Modal from '../components/panel/Modal.svelte';
 	import { getDashboard, createSharedTimetable } from '../api/planner';
-	import { getClassrooms, type ClassroomItem } from '../api/catalog';
 	import { selection, toggleGroup, clearSelection, pruneSelection } from '../stores/selection';
 	import {
 		buildPlannerEvents,
@@ -29,9 +28,7 @@
 	let data: PlannerData | null = null;
 	let loadError = '';
 	let searchQuery = '';
-	let selectedYear: number | null = null;
-	let selectedClassroomId: number | null = null;
-	let classrooms: ClassroomItem[] = [];
+	let selectedYears: number[] = [];
 	let detailCourse: Course | null = null;
 	let focusedSessionId: number | null = null;
 	let sharing = false;
@@ -54,9 +51,7 @@
 	async function load() {
 		loadError = '';
 		try {
-			const [dashboard, nextClassrooms] = await Promise.all([getDashboard(), getClassrooms()]);
-			data = dashboard;
-			classrooms = nextClassrooms;
+			data = await getDashboard();
 			pruneSelection(data.courses);
 		} catch {
 			loadError = 'No se pudo cargar el horario de cursos.';
@@ -70,11 +65,8 @@
 	$: visibleBundles = groupRelatedCourses(allCourses).filter((bundle) => {
 		const related = [...(bundle.theory ? [bundle.theory] : []), ...bundle.laboratories];
 		return (
-			(!selectedYear || related.some((course) => course.academicYear === selectedYear)) &&
-			(!selectedClassroomId ||
-				related.some((course) =>
-					course.groups.some((group) => group.classroomId === selectedClassroomId),
-				)) &&
+			(selectedYears.length === 0 ||
+				related.some((course) => selectedYears.includes(course.academicYear))) &&
 			related.some((course) => matchesCourseSearch(course, searchQuery))
 		);
 	});
@@ -261,10 +253,8 @@
 					<CourseExplorer
 						termLabel={data.termLabel}
 						{searchQuery}
-						{selectedYear}
+						{selectedYears}
 						{availableYears}
-						{classrooms}
-						{selectedClassroomId}
 						courses={filteredCourses}
 						selectedGroups={$selection}
 						{summary}
@@ -272,8 +262,7 @@
 						{exportingCalendar}
 						calendarEnabled={!!user && !!googleClientId}
 						onSearchChange={(value) => (searchQuery = value)}
-						onYearChange={(value) => (selectedYear = value)}
-						onClassroomChange={(value) => (selectedClassroomId = value)}
+						onYearsChange={(value) => (selectedYears = value)}
 						onToggleGroup={toggleGroup}
 						onClearSelection={clearSelection}
 						onPreviewImage={previewImage}
