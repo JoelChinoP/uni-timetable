@@ -1,4 +1,4 @@
-// Seed carga la oferta 2026-B de Ingeniería de Sistemas en la base.
+// Seed carga el horario 2026-B de Ingeniería de Sistemas en la base.
 // Es idempotente: los grupos ya existentes se omiten junto con sus sesiones.
 //
 //	go -C backend run ./cmd/seed

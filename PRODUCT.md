@@ -46,7 +46,7 @@ A diferencia de revisar catálogos, horarios y aulas por separado, Uni Timetable
 ## Evidence on Hand
 
 - Sistema visual y componentes actuales en `src/`.
-- Oferta académica real 2026-B de Ingeniería de Sistemas embebida en `backend/cmd/seed/horarios_2026_B_data.json` (35 cursos, 299 sesiones, extracción oficial).
+- Horario académico real 2026-B de Ingeniería de Sistemas embebida en `backend/cmd/seed/horarios_2026_B_data.json` (35 cursos, 299 sesiones, extracción oficial).
 - Esquema relacional base en `backend/internal/database/schema.sql` y migraciones en `backend/internal/database/migrations/`.
 - Documentación operativa y de despliegue en `README.md`.
 - No hay testimonios, métricas de uso, contenido legal, estudios de caso ni datos reales confirmados; no se deben inventar.

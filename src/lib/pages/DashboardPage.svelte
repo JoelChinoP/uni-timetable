@@ -41,7 +41,7 @@
 			data = await getDashboard();
 			pruneSelection(data.courses);
 		} catch {
-			loadError = 'No se pudo cargar la oferta de cursos.';
+			loadError = 'No se pudo cargar el horario de cursos.';
 		}
 	}
 
@@ -119,12 +119,12 @@
 
 	<main
 		id="main-content"
-		class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col gap-3 overflow-x-clip px-3 py-3 sm:px-4 lg:overflow-hidden xl:px-5"
+		class="mx-auto flex min-h-0 w-full max-w-[2400px] flex-1 flex-col gap-3 overflow-x-clip px-3 py-3 sm:px-4 lg:overflow-hidden xl:px-5"
 	>
 		{#if loadError}
 			<section class="neo-panel grid flex-1 place-items-center p-8 text-center" role="alert">
 				<div>
-					<h1 class="text-xl font-extrabold text-primary">La oferta no está disponible</h1>
+					<h1 class="text-xl font-extrabold text-primary">Los horarios no están disponibles</h1>
 					<p class="mt-2 text-sm text-secondary">{loadError}</p>
 					<button
 						class="mt-5 h-11 rounded-xl bg-accent-strong px-4 text-sm font-bold text-white"
@@ -139,7 +139,7 @@
 					<span
 						class="mx-auto block h-8 w-8 animate-spin rounded-full border-2 border-border-strong border-t-accent"
 					></span>
-					<p class="mt-3 text-sm font-semibold text-secondary">Cargando oferta académica…</p>
+					<p class="mt-3 text-sm font-semibold text-secondary">Cargando horarios…</p>
 				</div>
 			</section>
 		{:else}
@@ -173,7 +173,7 @@
 			</div>
 
 			<div
-				class="grid min-h-0 w-full min-w-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(330px,370px)]"
+				class="grid min-h-0 w-full min-w-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,400px)]"
 			>
 				<div
 					class="order-2 min-h-[32rem] min-w-0 flex-1 lg:order-1 lg:flex lg:min-h-0"

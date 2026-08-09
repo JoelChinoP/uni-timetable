@@ -226,7 +226,7 @@
 		{#if !user}
 			<section class="neo-panel p-8 text-center">
 				<h1 class="text-3xl font-extrabold text-primary">Necesitas iniciar sesión</h1>
-				<p class="mt-3 text-secondary">Entra con Google para gestionar la oferta.</p>
+				<p class="mt-3 text-secondary">Entra con Google para gestionar los horarios.</p>
 				<button
 					class="mt-6 min-h-11 rounded-xl bg-accent-strong px-5 font-bold text-white"
 					type="button"
@@ -254,9 +254,6 @@
 					<h1 class="mt-1 text-3xl font-extrabold tracking-tight text-primary">
 						Gestión académica
 					</h1>
-					<p class="mt-1 text-sm text-secondary">
-						Administra la oferta sin perder de vista sus horarios.
-					</p>
 				</div>
 				<button
 					class="neo-button min-h-11 px-4 text-sm font-bold text-primary"
@@ -404,7 +401,7 @@
 					>
 						<div>
 							<h2 class="text-lg font-extrabold text-primary">Docentes</h2>
-							<p class="mt-0.5 text-xs text-secondary">Personas vinculadas a la carrera.</p>
+							<p class="mt-0.5 text-xs text-secondary">Personas vinculadas a un curso.</p>
 						</div>
 						<button
 							class="min-h-11 rounded-xl bg-accent-strong px-4 text-xs font-bold text-white"
@@ -445,7 +442,7 @@
 					<header class="border-b border-border-subtle px-4 py-3 sm:px-5">
 						<h2 class="text-lg font-extrabold text-primary">Usuarios autorizados</h2>
 						<p class="mt-0.5 text-xs text-secondary">
-							Registra las cuentas que pueden editar el catálogo.
+							Registra las cuentas que pueden editar los horarios.
 						</p>
 					</header>
 					<div class="p-4 sm:p-5">

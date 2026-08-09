@@ -18,7 +18,7 @@
 	on:click={() => onOpen(event)}
 >
 	<div class="flex min-w-0 items-center gap-1">
-		<span class="truncate text-[8px] font-extrabold tracking-[0.08em] text-secondary uppercase"
+		<span class="truncate text-[10px] font-extrabold tracking-[0.08em] text-secondary uppercase"
 			>{event.code}</span
 		>
 		{#if event.conflictIds.length > 0}<span
@@ -26,9 +26,10 @@
 				aria-hidden="true"
 			></span>{/if}
 	</div>
-	<strong class="line-clamp-2 text-[10px] leading-3 font-bold text-primary xl:text-[11px]"
-		>{event.title}</strong
-	>
-	<span class="mt-auto truncate text-[8px] leading-3 text-secondary xl:text-[9px]">{timeLabel}</span
+	<div class="flex w-full text-center">
+		<strong class="line-clamp-2 text-[12px] leading-5 font-bold text-primary xl:text-[15px]"
+		>{event.title}</strong>
+	</div>
+	<span class="mt-auto truncate text-[10px] leading-3 text-secondary xl:text-[10px] font-semibold">{timeLabel}</span
 	>
 </button>

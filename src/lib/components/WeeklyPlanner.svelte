@@ -127,18 +127,18 @@
 		<div class="border-r border-b border-border-subtle bg-surface-muted"></div>
 		<div class="grid border-b border-border-subtle bg-surface-muted" style={dayColumnsStyle}>
 			{#each days as day (day)}<div
-					class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[11px]"
+					class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[14px]"
 				>
 					{getDayLabel(day)}
 				</div>{/each}
 		</div>
 		<div class="grid border-r border-border-subtle bg-surface-muted" style={rowsStyle}>
 			{#each boardHours as hour, index (hour)}
-				<div class="border-b border-border-subtle px-1 pt-1 text-right text-[9px] text-secondary">
+				<div class="border-b border-border-subtle px-1 pt-1 text-right text-[11px] text-secondary">
 					<div
 						class={`flex h-full ${index === boardHours.length - 1 ? 'flex-col justify-between pb-1' : 'items-start justify-end'}`}
 					>
-						<span>{formatBoardHour(hour)}</span>{#if index === boardHours.length - 1}<span
+						<span style="font-weight:600;">{formatBoardHour(hour)}</span>{#if index === boardHours.length - 1}<span
 								>{formatBoardHour(hour + 1)}</span
 							>{/if}
 					</div>

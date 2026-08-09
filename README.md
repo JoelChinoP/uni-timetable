@@ -15,7 +15,7 @@ Go net/http (Vercel gru1)
 Supabase PostgreSQL (sa-east-1)
 ```
 
-La app tiene cuatro rutas principales: `/` es el tablero semanal con la oferta real de la base,
+La app tiene cuatro rutas principales: `/` es el tablero semanal con el horario real de la base,
 `/login` inicia sesión con Google, `/panel` gestiona cursos, grupos, aulas y docentes (usuarios
 registrados) y usuarios (solo `ADMIN`), y `/s/{id}` muestra un horario compartido en modo lectura.
 Go valida el ID token de Google, crea una cookie `HttpOnly` y consulta `app.users`; el primer correo
@@ -34,7 +34,7 @@ rol `USER`.
 ├── vercel.json                  # Proyecto web
 └── backend/
     ├── cmd/api/                 # Servidor net/http detectado por Vercel
-    ├── cmd/seed/                # Carga idempotente de la oferta 2026-B (JSON embebido)
+    ├── cmd/seed/                # Carga idempotente de los horarios 2026-B (JSON embebido)
     ├── internal/database/
     │   ├── schema.sql           # Bootstrap SQL para una base vacía
     │   ├── queries/             # SQL fuente de SQLC
@@ -97,7 +97,7 @@ TERM_LABEL=2026-B
 `TERM_LABEL` es el rótulo del periodo mostrado en el tablero; cámbialo al resembrar otro ciclo.
 
 ```bash
-npm run db:seed   # carga la oferta 2026-B de Ing. de Sistemas (idempotente)
+npm run db:seed   # carga los horarios 2026-B de Ing. de Sistemas (idempotente)
 ```
 
 El seed usa `DATABASE_MIGRATION_URL` si existe y, si no, `DATABASE_URL`. Inserta carrera, aulas,
