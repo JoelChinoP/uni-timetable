@@ -29,7 +29,9 @@
 	style={cardStyle}
 	on:click={() => onOpen(event)}
 >
-	<div class="relative flex min-w-0 items-center justify-center gap-1 lg:justify-start">
+	<div
+		class="relative flex min-w-0 flex-1 items-center justify-center gap-1 lg:flex-none lg:justify-start"
+	>
 		<span
 			class="max-w-full truncate text-center text-[8px] leading-3 font-extrabold tracking-[-0.02em] text-secondary uppercase lg:text-left lg:text-[10px] lg:tracking-[0.08em]"
 		>

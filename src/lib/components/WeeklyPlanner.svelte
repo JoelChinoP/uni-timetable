@@ -17,6 +17,14 @@
 
 	let showMobileConflicts = false;
 	const boardDays = plannerDays;
+	const mobileDayCodes: Record<PlannerDay, string> = {
+		MONDAY: 'L',
+		TUESDAY: 'M',
+		WEDNESDAY: 'M',
+		THURSDAY: 'J',
+		FRIDAY: 'V',
+		SATURDAY: 'S',
+	};
 	$: bounds = deriveBoardBounds(academicHours);
 	$: startMinutes = bounds.startHour * 60;
 	$: totalMinutes = (bounds.endHour - bounds.startHour) * 60;
@@ -66,10 +74,7 @@
 						class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[14px]"
 						title={getDayLabel(day)}
 					>
-						<span
-							class="grid h-6 w-6 place-items-center rounded-lg bg-surface/70 shadow-[var(--ui-shadow-control)] lg:hidden"
-							>{getDayCode(day)}</span
-						>
+						<span class="lg:hidden">{mobileDayCodes[day]}</span>
 						<span class="hidden lg:inline">{getDayLabel(day)}</span>
 					</div>
 				{/each}
@@ -77,7 +82,7 @@
 			<div class="planner-header-cell grid border-r border-border-subtle" style={rowsStyle}>
 				{#each boardHours as hour (hour)}
 					<div
-						class="border-b border-border-subtle px-1 pt-1 text-center text-[10px] text-secondary lg:text-right lg:text-[11px]"
+						class="border-b border-border-subtle px-1 pt-1 text-center text-[9px] text-secondary lg:text-right lg:text-[11px]"
 					>
 						<div class="flex h-full items-start justify-center lg:justify-end">
 							<span style="font-weight:600;">{formatBoardHour(hour)}</span>
