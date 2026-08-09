@@ -49,7 +49,9 @@
 	</div>
 
 	<div class="hidden w-full text-center lg:flex">
-		<strong class="line-clamp-2 px-0.5 text-[12px] leading-5 font-bold text-primary xl:text-[14px]">
+		<strong
+			class="line-clamp-2 w-full px-0.5 text-center text-[12px] leading-5 font-bold text-primary xl:text-[14px]"
+		>
 			{displayTitle}
 		</strong>
 	</div>
