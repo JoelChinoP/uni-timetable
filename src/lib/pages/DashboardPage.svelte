@@ -5,7 +5,9 @@
 	import CourseExplorer from '../components/CourseExplorer.svelte';
 	import WeeklyPlanner from '../components/WeeklyPlanner.svelte';
 	import CourseDetailModal from '../components/CourseDetailModal.svelte';
+	import Modal from '../components/panel/Modal.svelte';
 	import { getDashboard, createSharedTimetable } from '../api/planner';
+	import { getClassrooms, type ClassroomItem } from '../api/catalog';
 	import { selection, toggleGroup, clearSelection, pruneSelection } from '../stores/selection';
 	import {
 		buildPlannerEvents,
@@ -14,6 +16,8 @@
 		groupRelatedCourses,
 		matchesCourseSearch,
 	} from '../utils/planner';
+	import { addResourcesToGoogleCalendar, renderSchedulePng } from '../utils/scheduleExport';
+	import { buildCalendarResources } from '../utils/calendarResources';
 	import type { Course, PlannerConflict, PlannerData, PlannerEvent } from '../types/planner';
 	import type { AuthUser } from '../types/auth';
 
@@ -26,6 +30,8 @@
 	let loadError = '';
 	let searchQuery = '';
 	let selectedYear: number | null = null;
+	let selectedClassroomId: number | null = null;
+	let classrooms: ClassroomItem[] = [];
 	let detailCourse: Course | null = null;
 	let focusedSessionId: number | null = null;
 	let sharing = false;
@@ -34,11 +40,23 @@
 	let mobileView: 'courses' | 'planner' = 'courses';
 	let events: PlannerEvent[] = [];
 	let conflicts: PlannerConflict[] = [];
+	let imagePreviewUrl = '';
+	let calendarModalOpen = false;
+	let exportingCalendar = false;
+	let exportError = '';
+	const googleClientId: string = String(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '').trim();
+	const localDate = (date: Date) =>
+		new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+	const today = new Date();
+	let calendarStart = localDate(today);
+	let calendarEnd = localDate(new Date(today.getTime() + 120 * 24 * 60 * 60 * 1000));
 
 	async function load() {
 		loadError = '';
 		try {
-			data = await getDashboard();
+			const [dashboard, nextClassrooms] = await Promise.all([getDashboard(), getClassrooms()]);
+			data = dashboard;
+			classrooms = nextClassrooms;
 			pruneSelection(data.courses);
 		} catch {
 			loadError = 'No se pudo cargar el horario de cursos.';
@@ -53,6 +71,10 @@
 		const related = [...(bundle.theory ? [bundle.theory] : []), ...bundle.laboratories];
 		return (
 			(!selectedYear || related.some((course) => course.academicYear === selectedYear)) &&
+			(!selectedClassroomId ||
+				related.some((course) =>
+					course.groups.some((group) => group.classroomId === selectedClassroomId),
+				)) &&
 			related.some((course) => matchesCourseSearch(course, searchQuery))
 		);
 	});
@@ -63,6 +85,9 @@
 	$: selectedCourseGroups = getSelectedCourseGroups(allCourses, $selection);
 	$: ({ events, conflicts } = buildPlannerEvents(selectedCourseGroups));
 	$: summary = buildPlannerSummary(selectedCourseGroups, conflicts);
+	$: conflictingCourseIds = new Set(
+		events.filter((event) => event.conflictIds.length > 0).map((event) => event.courseId),
+	);
 
 	function openEvent(event: PlannerEvent) {
 		const course = allCourses.find(({ id }) => id === event.courseId) ?? null;
@@ -99,6 +124,49 @@
 			shareFeedback = 'Enlace copiado';
 		} catch {
 			shareFeedback = 'Selecciona el enlace y cópialo manualmente';
+		}
+	}
+
+	function previewImage() {
+		if (!data || events.length === 0) return;
+		try {
+			imagePreviewUrl = renderSchedulePng(
+				events,
+				data.academicHours,
+				data.termLabel,
+				document.documentElement.dataset.theme === 'dark',
+			);
+		} catch (error) {
+			shareFeedback = error instanceof Error ? error.message : 'No se pudo generar la imagen';
+		}
+	}
+
+	async function exportCalendar() {
+		if (!data || !user || !googleClientId || exportingCalendar) return;
+		exportError = '';
+		if (!calendarStart || !calendarEnd || calendarStart > calendarEnd) {
+			exportError = 'Selecciona un rango de fechas válido.';
+			return;
+		}
+		const resources = buildCalendarResources(
+			events,
+			data.academicHours,
+			calendarStart,
+			calendarEnd,
+		);
+		if (resources.length === 0) {
+			exportError = 'No hay horarios dentro de ese rango.';
+			return;
+		}
+		exportingCalendar = true;
+		try {
+			const created = await addResourcesToGoogleCalendar(googleClientId, user.email, resources);
+			calendarModalOpen = false;
+			shareFeedback = `${created} horarios sincronizados con Google Calendar`;
+		} catch (error) {
+			exportError = error instanceof Error ? error.message : 'No se pudo exportar a Calendar';
+		} finally {
+			exportingCalendar = false;
 		}
 	}
 </script>
@@ -176,7 +244,7 @@
 				class="grid min-h-0 w-full min-w-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,400px)]"
 			>
 				<div
-					class="order-2 min-h-[32rem] min-w-0 flex-1 lg:order-1 lg:flex lg:min-h-0"
+					class="order-2 min-h-[32rem] min-w-0 flex-1 overflow-auto lg:order-1 lg:flex lg:min-h-0"
 					class:hidden={mobileView !== 'planner'}
 				>
 					<WeeklyPlanner
@@ -195,13 +263,24 @@
 						{searchQuery}
 						{selectedYear}
 						{availableYears}
+						{classrooms}
+						{selectedClassroomId}
 						courses={filteredCourses}
 						selectedGroups={$selection}
 						{summary}
+						{conflictingCourseIds}
+						{exportingCalendar}
+						calendarEnabled={!!user && !!googleClientId}
 						onSearchChange={(value) => (searchQuery = value)}
 						onYearChange={(value) => (selectedYear = value)}
+						onClassroomChange={(value) => (selectedClassroomId = value)}
 						onToggleGroup={toggleGroup}
 						onClearSelection={clearSelection}
+						onPreviewImage={previewImage}
+						onExportCalendar={() => {
+							exportError = '';
+							calendarModalOpen = true;
+						}}
 						onOpenDetails={(course) => {
 							detailCourse = course;
 							focusedSessionId = null;
@@ -240,6 +319,66 @@
 				</div>{/if}
 		</div>
 	{/if}
+
+	{#if imagePreviewUrl}<Modal title="Previsualizar horario" onClose={() => (imagePreviewUrl = '')}>
+			<img
+				class="w-full rounded-2xl border border-border-subtle bg-surface"
+				src={imagePreviewUrl}
+				alt="Vista previa del horario semanal"
+			/>
+			<div class="mt-4 flex justify-end">
+				<a
+					class="inline-flex min-h-11 items-center rounded-xl bg-accent-strong px-4 text-sm font-bold text-white"
+					href={imagePreviewUrl}
+					download="mi-horario.png">Descargar PNG</a
+				>
+			</div>
+		</Modal>{/if}
+
+	{#if calendarModalOpen}<Modal
+			title="Exportar a Google Calendar"
+			onClose={() => !exportingCalendar && (calendarModalOpen = false)}
+		>
+			<form class="grid gap-3 sm:grid-cols-2" on:submit|preventDefault={exportCalendar}>
+				<label class="flex flex-col gap-1.5"
+					><span class="text-[10px] font-extrabold tracking-[0.16em] text-muted uppercase"
+						>Desde</span
+					><input
+						class="neo-control min-h-11 px-3 text-sm text-primary outline-none"
+						bind:value={calendarStart}
+						required
+						type="date"
+					/></label
+				>
+				<label class="flex flex-col gap-1.5"
+					><span class="text-[10px] font-extrabold tracking-[0.16em] text-muted uppercase"
+						>Hasta</span
+					><input
+						class="neo-control min-h-11 px-3 text-sm text-primary outline-none"
+						bind:value={calendarEnd}
+						min={calendarStart}
+						required
+						type="date"
+					/></label
+				>
+				<p class="text-xs leading-5 text-secondary sm:col-span-2">
+					Se crearán eventos semanales en <strong class="text-primary">{user?.email}</strong>.
+					Google pedirá confirmar esa cuenta y el permiso mínimo de edición de eventos.
+				</p>
+				{#if exportError}<p
+						class="rounded-xl bg-warning-soft px-3 py-2 text-sm font-semibold text-warning sm:col-span-2"
+						role="alert"
+					>
+						{exportError}
+					</p>{/if}
+				<button
+					class="min-h-11 rounded-xl bg-accent-strong px-4 text-sm font-bold text-white disabled:opacity-50 sm:col-span-2"
+					type="submit"
+					disabled={exportingCalendar}
+					>{exportingCalendar ? 'Exportando…' : 'Autorizar y exportar'}</button
+				>
+			</form>
+		</Modal>{/if}
 
 	{#if detailCourse}
 		<CourseDetailModal

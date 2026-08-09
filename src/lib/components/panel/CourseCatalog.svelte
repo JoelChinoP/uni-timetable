@@ -1,9 +1,16 @@
 <script lang="ts">
 	import type { AcademicHour, Course, CourseGroup } from '../../types/planner';
-	import { formatTimeRange, getDayLabel, getModeLabel } from '../../utils/planner';
+	import {
+		formatTimeRange,
+		getDayLabel,
+		getModeLabel,
+		matchesCourseSearch,
+	} from '../../utils/planner';
+	import type { ClassroomItem } from '../../api/catalog';
 
 	export let courses: Course[] = [];
 	export let academicHours: AcademicHour[] = [];
+	export let classrooms: ClassroomItem[] = [];
 	export let onAddGroup: (course: Course) => void;
 	export let onEditCourse: (course: Course) => void;
 	export let onEditGroup: (group: CourseGroup, course: Course) => void;
@@ -12,16 +19,16 @@
 
 	let search = '';
 	let selectedId: number | null = null;
+	let selectedYear: number | null = null;
+	let selectedClassroomId: number | null = null;
+	$: availableYears = [...new Set(courses.map((course) => course.academicYear))].sort();
 
 	$: visible = courses.filter((course) => {
-		const query = search.trim().toLowerCase();
-		if (!query) {
-			return true;
-		}
 		return (
-			course.name.toLowerCase().includes(query) ||
-			course.abbreviation.toLowerCase().includes(query) ||
-			course.code.toLowerCase().includes(query)
+			(!selectedYear || course.academicYear === selectedYear) &&
+			(!selectedClassroomId ||
+				course.groups.some((group) => group.classroomId === selectedClassroomId)) &&
+			matchesCourseSearch(course, search)
 		);
 	});
 
@@ -32,25 +39,48 @@
 	class="grid divide-y divide-grid lg:grid-cols-[minmax(0,270px)_minmax(0,1fr)] lg:divide-x lg:divide-y-0"
 >
 	<div class="flex max-h-[42vh] min-h-0 flex-col lg:h-[62vh] lg:max-h-none">
-		<label class="neo-control m-3 flex items-center px-3" aria-label="Buscar cursos">
-			<svg
-				class="h-3.5 w-3.5 shrink-0 stroke-muted"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
-			>
-				<path d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0a7 7 0 0 1 14 0Z" />
-			</svg>
-			<input
-				class="h-11 min-w-0 flex-1 bg-transparent px-2 text-xs text-primary outline-none placeholder:text-muted"
-				type="search"
-				placeholder="Buscar curso…"
-				bind:value={search}
-			/>
-		</label>
+		<div class="m-3 space-y-2">
+			<label class="neo-control flex items-center px-3" aria-label="Buscar cursos">
+				<svg
+					class="h-3.5 w-3.5 shrink-0 stroke-muted"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0a7 7 0 0 1 14 0Z" />
+				</svg>
+				<input
+					class="h-11 min-w-0 flex-1 bg-transparent px-2 text-xs text-primary outline-none placeholder:text-muted"
+					type="search"
+					placeholder="Buscar curso…"
+					bind:value={search}
+				/>
+			</label>
+			<div class="grid grid-cols-2 gap-2">
+				<label class="neo-control grid"
+					><span class="sr-only">Filtrar por año</span><select
+						class="h-10 min-w-0 bg-transparent px-2 text-xs font-bold text-primary outline-none"
+						bind:value={selectedYear}
+						><option value={null}>Todos los años</option
+						>{#each availableYears as year (year)}<option value={year}>Año {year}</option
+							>{/each}</select
+					></label
+				>
+				<label class="neo-control grid"
+					><span class="sr-only">Filtrar por aula</span><select
+						class="h-10 min-w-0 bg-transparent px-2 text-xs font-bold text-primary outline-none"
+						bind:value={selectedClassroomId}
+						><option value={null}>Todas las aulas</option
+						>{#each classrooms as classroom (classroom.id)}<option value={classroom.id}
+								>{classroom.code}</option
+							>{/each}</select
+					></label
+				>
+			</div>
+		</div>
 
 		<div class="min-h-0 flex-1 overflow-y-auto py-1">
 			{#if visible.length === 0}
@@ -101,16 +131,33 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<button
-							class="neo-button min-h-10 px-3 text-xs font-bold text-primary"
+							class="neo-button inline-flex min-h-10 items-center gap-1.5 px-3 text-xs font-bold text-primary"
 							type="button"
-							on:click={() => selected && onEditCourse(selected)}>Editar</button
+							on:click={() => selected && onEditCourse(selected)}
+							><svg
+								class="h-3.5 w-3.5 stroke-current"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg
+							>Editar</button
 						>
 						<button
-							class="min-h-10 rounded-[10px] bg-accent-strong px-3 text-xs font-bold text-white transition hover:bg-accent"
+							class="inline-flex min-h-10 items-center gap-1.5 rounded-[10px] bg-accent-strong px-3 text-xs font-bold text-white transition hover:bg-accent"
 							type="button"
 							on:click={() => selected && onAddGroup(selected)}
 						>
-							+ Grupo
+							<svg
+								class="h-3.5 w-3.5 stroke-current"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg
+							>Grupo
 						</button>
 						<button
 							class="grid h-10 w-10 place-items-center rounded-[10px] text-warning transition hover:bg-warning-soft"
@@ -159,16 +206,32 @@
 							</div>
 							<div class="flex gap-1">
 								<button
-									class="min-h-10 rounded-lg px-2 text-[11px] font-bold text-primary transition hover:bg-surface-muted"
+									class="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-primary transition hover:bg-surface-muted"
 									type="button"
-									on:click={() => selected && onEditGroup(group, selected)}>Editar</button
+									on:click={() => selected && onEditGroup(group, selected)}
+									><svg
+										class="h-3.5 w-3.5 stroke-current"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"
+										><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg
+									>Editar</button
 								>
 								<button
-									class="min-h-10 rounded-lg px-2 text-[11px] font-bold text-warning transition hover:bg-warning-soft"
+									class="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-warning transition hover:bg-warning-soft"
 									type="button"
 									on:click={() => selected && onDeleteGroup(group, selected)}
 								>
-									Eliminar
+									<svg
+										class="h-3.5 w-3.5 stroke-current"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" /></svg
+									>Eliminar
 								</button>
 							</div>
 						</div>

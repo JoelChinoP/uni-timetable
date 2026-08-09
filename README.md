@@ -186,6 +186,7 @@ Para una base creada antes de usuarios, aplica las migraciones incrementales:
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/001_create_users.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/002_planner_release.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/003_classroom_overlap.sql
+psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/004_roles_and_lab_prefixes.sql
 ```
 
 `ADMIN_EMAIL` no se inserta como SQL estático: al autenticar ese correo con Google, la API hace un

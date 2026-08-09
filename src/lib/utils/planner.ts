@@ -19,6 +19,24 @@ const dayLabels: Record<PlannerDay, string> = {
 	SATURDAY: 'Sábado',
 };
 
+export const plannerDays: PlannerDay[] = [
+	'MONDAY',
+	'TUESDAY',
+	'WEDNESDAY',
+	'THURSDAY',
+	'FRIDAY',
+	'SATURDAY',
+];
+
+const dayCodes: Record<PlannerDay, string> = {
+	MONDAY: 'L',
+	TUESDAY: 'M',
+	WEDNESDAY: 'X',
+	THURSDAY: 'J',
+	FRIDAY: 'V',
+	SATURDAY: 'S',
+};
+
 const modeLabels: Record<SessionMode, string> = {
 	THEORY: 'Teoría',
 	LABORATORY: 'Laboratorio',
@@ -39,6 +57,10 @@ export function deriveBoardBounds(academicHours: AcademicHour[]) {
 
 export function getDayLabel(day: PlannerDay) {
 	return dayLabels[day];
+}
+
+export function getDayCode(day: PlannerDay) {
+	return dayCodes[day];
 }
 
 export function getModeLabel(mode: SessionMode) {
@@ -86,6 +108,26 @@ export function groupRelatedCourses(courses: Course[]): CourseBundle[] {
 	return [...bundles.values()];
 }
 
+export function getCourseDisplayName(course: Course) {
+	if (course.type !== 'LABORATORY' || course.name.toLocaleLowerCase('es').startsWith('lab - ')) {
+		return course.name;
+	}
+	return `Lab - ${course.name}`;
+}
+
+export function getCourseDisplayCode(course: Course) {
+	const code = course.abbreviation.replace(/-L$/i, '');
+	return course.type === 'LABORATORY' && !code.startsWith('LAB-') ? `LAB-${code}` : code;
+}
+
+export function getClassroomCourseGroups(courses: Course[], classroomId: number) {
+	return courses.flatMap((course) =>
+		course.groups
+			.filter((group) => group.classroomId === classroomId)
+			.map((group) => ({ course, group })),
+	);
+}
+
 export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]): {
 	events: PlannerEvent[];
 	conflicts: PlannerConflict[];
@@ -106,6 +148,7 @@ export function buildPlannerEvents(selectedCourseGroups: SelectedCourseGroup[]):
 			endHourAcademic: session.startHourAcademic + session.durationHours - 1,
 			durationHours: session.durationHours,
 			mode: session.mode,
+			classroomId: group.classroomId,
 			classroomLabel: session.classroomLabel,
 			color: course.color,
 			lane: 0,
@@ -236,17 +279,21 @@ export function formatBoardHour(hour: number) {
 }
 
 export function matchesCourseSearch(course: Course, searchQuery: string) {
-	const normalizedQuery = searchQuery.trim().toLowerCase();
+	const normalizedQuery = normalizeSpanish(searchQuery);
 	if (!normalizedQuery) {
 		return true;
 	}
 
 	return (
-		course.code.toLowerCase().includes(normalizedQuery) ||
-		course.abbreviation.toLowerCase().includes(normalizedQuery) ||
-		course.name.toLowerCase().includes(normalizedQuery) ||
-		course.summary.toLowerCase().includes(normalizedQuery)
+		normalizeSpanish(course.code).includes(normalizedQuery) ||
+		normalizeSpanish(course.abbreviation).includes(normalizedQuery) ||
+		normalizeSpanish(course.name).includes(normalizedQuery) ||
+		normalizeSpanish(course.summary).includes(normalizedQuery)
 	);
+}
+
+function normalizeSpanish(value: string) {
+	return value.trim().normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('es');
 }
 
 function toMinutes(timeValue: string) {

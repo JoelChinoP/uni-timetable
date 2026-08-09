@@ -1,14 +1,20 @@
 <script lang="ts">
 	import type { Course, CourseBundle } from '../types/planner';
+	import { getCourseDisplayCode, getCourseDisplayName } from '../utils/planner';
 
 	export let bundle: CourseBundle;
 	export let selectedGroups: Record<string, number> = {};
 	export let onToggleGroup: (courseId: number, groupId: number) => void;
 	export let onOpenDetails: (course: Course) => void;
+	export let conflictingCourseIds: Set<number> = new Set();
 
 	$: primary = bundle.theory ?? bundle.laboratories[0];
 	$: related = [...(bundle.theory ? [bundle.theory] : []), ...bundle.laboratories];
 	$: selectedCount = related.filter((course) => selectedGroups[String(course.id)]).length;
+	$: hasConflict = related.some((course) => conflictingCourseIds.has(course.id));
+	$: wideModes = related.some(
+		(course) => course.groups.length > 3 || getCourseDisplayCode(course).length > 10,
+	);
 
 	function getContrastTextColor(hexColor: string) {
 		const normalized = hexColor.replace('#', '');
@@ -39,43 +45,57 @@
 			type="button"
 			on:click={() => onOpenDetails(primary)}
 		>
-			<h3 class="truncate text-[14px] leading-5 font-extrabold text-primary" title={primary.name}>
-				{primary.name}
+			<h3
+				class="truncate text-[14px] leading-5 font-extrabold text-primary"
+				title={getCourseDisplayName(primary)}
+			>
+				{getCourseDisplayName(primary)}
 			</h3>
 			<p class="	text-[10px] font-bold tracking-[0.12em] text-muted uppercase">
-				{primary.abbreviation.replace(/-L$/, '')} · {primary.academicYear}° año
+				{getCourseDisplayCode(primary)} · {primary.academicYear}° año
 			</p>
 		</button>
 		<button
 			class="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-secondary transition hover:bg-surface-muted hover:text-accent"
 			type="button"
-			aria-label={`Ver detalles de ${primary.name}`}
+			aria-label={`${hasConflict ? 'Ver conflicto y detalles' : 'Ver detalles'} de ${getCourseDisplayName(primary)}`}
 			on:click={() => onOpenDetails(primary)}
 		>
-			<svg
-				class="h-6 w-6 stroke-current"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke-width="1.9"
-				stroke-linecap="round"
-				aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5h.01" /></svg
-			>
+			{#if hasConflict}
+				<svg
+					class="h-6 w-6 stroke-warning"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke-width="1.9"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v5M12 17.2h.01" /></svg
+				>
+			{:else}
+				<svg
+					class="h-6 w-6 stroke-current"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke-width="1.9"
+					stroke-linecap="round"
+					aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5h.01" /></svg
+				>
+			{/if}
 		</button>
 	</header>
 
-	<div class="mt-1 grid gap-1">
+	<div class="mt-1 flex flex-wrap gap-1">
 		{#each related as course (course.id)}
 			<section
-				class="rounded-md bg-surface-muted/70 p-1"
+				class={`min-w-0 rounded-md bg-surface-muted/70 p-1 ${wideModes || related.length === 1 ? 'basis-full' : 'basis-[calc(50%_-_0.125rem)]'}`}
 				aria-label={course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}
 			>
-				<div class="mb-1 flex items-center justify-between gap-21">
-					<span class="text-[9px] font-extrabold tracking-[0.18em] text-secondary uppercase"
+				<div class="mb-1 flex items-center justify-between gap-2">
+					<span class="min-w-0 text-[9px] font-extrabold tracking-[0.12em] text-secondary uppercase"
 						>{course.type === 'THEORY'
 							? 'Teoría'
-							: bundle.laboratories.length > 1
-								? `Laboratorio · ${course.abbreviation}`
-								: 'Laboratorio'}</span
+							: `${getCourseDisplayName(course)} · ${getCourseDisplayCode(course)}`}</span
 					>
 					{#if selectedGroups[String(course.id)]}<span class="text-[9px] font-bold text-accent"
 							>Seleccionado</span
@@ -88,6 +108,7 @@
 						{#each course.groups as group (group.id)}
 							<button
 								class="neo-button min-h-8 min-w-8 text-xs font-extrabold text-secondary sm:min-h-8 sm:min-w-8"
+								class:group-choice-selected={group.id === selectedGroups[String(course.id)]}
 								type="button"
 								aria-label={`${course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}, grupo ${group.name}`}
 								aria-pressed={group.id === selectedGroups[String(course.id)]}

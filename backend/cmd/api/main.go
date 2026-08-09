@@ -122,6 +122,7 @@ func routes(config routeConfig) http.Handler {
 	}
 	auth := &authHandler{
 		queries:    queries,
+		db:         config.db,
 		verifier:   config.googleVerifier,
 		sessions:   sessions,
 		adminEmail: config.adminEmail,
@@ -138,6 +139,8 @@ func routes(config routeConfig) http.Handler {
 	mux.HandleFunc("GET /auth/me", auth.me)
 	mux.HandleFunc("POST /auth/logout", auth.logout)
 	mux.HandleFunc("/users", auth.users)
+	mux.HandleFunc("PUT /users/{id}", auth.userByID)
+	mux.HandleFunc("DELETE /users/{id}", auth.userByID)
 
 	termLabel := os.Getenv("TERM_LABEL")
 	if termLabel == "" {

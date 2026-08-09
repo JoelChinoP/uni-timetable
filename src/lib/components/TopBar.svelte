@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ThemeToggle from './ThemeToggle.svelte';
 	import { theme } from '../stores/theme';
-	import type { AuthUser } from '../types/auth';
+	import { canEditCatalog, type AuthUser } from '../types/auth';
 
 	export let user: AuthUser | null = null;
 	export let busy = false;
@@ -85,6 +85,27 @@
 			</button>
 		{/if}
 
+		<button
+			class="neo-button inline-flex h-11 items-center gap-2 px-3 text-sm font-bold text-primary"
+			type="button"
+			title="Ver horarios por aula"
+			on:click={() => navigate('/aulas')}
+		>
+			<svg
+				class="h-4.5 w-4.5 stroke-current"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke-width="1.8"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+				><path
+					d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16M2 21h20M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2"
+				/></svg
+			>
+			<span class="hidden md:inline">Aulas</span>
+		</button>
+
 		<ThemeToggle theme={$theme} onToggle={theme.toggle} />
 
 		{#if busy}
@@ -142,8 +163,14 @@
 							class="flex h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold text-primary hover:bg-surface-muted"
 							type="button"
 							role="menuitem"
-							on:click={() => navigate('/panel')}>Panel</button
+							on:click={() => navigate('/aulas')}>Aulas</button
 						>
+						{#if canEditCatalog(user)}<button
+								class="flex h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold text-primary hover:bg-surface-muted"
+								type="button"
+								role="menuitem"
+								on:click={() => navigate('/panel')}>Panel</button
+							>{/if}
 						<div class="my-1 border-t border-border-subtle"></div>
 						<button
 							class="flex h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold text-warning hover:bg-warning-soft"

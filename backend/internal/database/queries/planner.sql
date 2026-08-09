@@ -14,7 +14,7 @@ WHERE cr.code = $1
 ORDER BY c.academic_year, c.name, c.type;
 
 -- name: ListPlannerGroups :many
-SELECT g.id, g.id_course, g.name, cl.code AS classroom_code
+SELECT g.id, g.id_course, g.name, g.id_classroom, cl.code AS classroom_code
 FROM app.groups g
 JOIN app.courses c ON c.id = g.id_course
 JOIN app.careers cr ON cr.id = c.id_career

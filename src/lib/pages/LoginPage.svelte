@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 
 	import { loginWithGoogle } from '../api/auth';
-	import type { AuthUser } from '../types/auth';
+	import { canEditCatalog, type AuthUser } from '../types/auth';
 
 	export let user: AuthUser | null = null;
 	export let onSigned: (user: AuthUser) => void;
@@ -93,7 +93,7 @@
 				>
 					Ir al inicio
 				</button>
-				{#if user.role === 'ADMIN'}
+				{#if canEditCatalog(user)}
 					<button
 						class="neo-button min-h-11 px-5 py-2.5 text-sm font-bold text-primary"
 						type="button"

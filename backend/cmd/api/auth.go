@@ -13,6 +13,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/JoelChinoP/uni-timetable/backend/internal/database"
 )
@@ -44,6 +45,7 @@ type sessionStore struct {
 
 type authHandler struct {
 	queries    *database.Queries
+	db         *pgxpool.Pool
 	verifier   *oidc.IDTokenVerifier
 	sessions   *sessionStore
 	adminEmail string
@@ -115,7 +117,7 @@ func (sessions *sessionStore) sign(value []byte) []byte {
 	return mac.Sum(nil)
 }
 
-func (auth *authHandler) currentUser(r *http.Request) (AuthUser, bool) {
+func (auth *authHandler) sessionUser(r *http.Request) (AuthUser, bool) {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil || cookie.Value == "" {
 		return AuthUser{}, false
@@ -123,17 +125,48 @@ func (auth *authHandler) currentUser(r *http.Request) (AuthUser, bool) {
 	return auth.sessions.get(cookie.Value)
 }
 
-func (auth *authHandler) requireAdmin(w http.ResponseWriter, r *http.Request) (AuthUser, bool) {
-	user, ok := auth.currentUser(r)
+func (auth *authHandler) resolveUser(ctx context.Context, identity AuthUser) (AuthUser, error) {
+	user, err := auth.accountUser(ctx, identity.Email, identity.DisplayName)
+	if err != nil {
+		return AuthUser{}, err
+	}
+	user.EmailVerified = identity.EmailVerified
+	user.AvatarURL = identity.AvatarURL
+	return user, nil
+}
+
+func (auth *authHandler) requireRoles(w http.ResponseWriter, r *http.Request, roles ...string) (AuthUser, bool) {
+	identity, ok := auth.sessionUser(r)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return AuthUser{}, false
 	}
-	if user.Role != "ADMIN" {
-		writeError(w, http.StatusForbidden, "forbidden")
+	if auth.queries == nil {
+		writeError(w, http.StatusServiceUnavailable, "database is not configured")
 		return AuthUser{}, false
 	}
-	return user, true
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	user, err := auth.resolveUser(ctx, identity)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return AuthUser{}, false
+	}
+	for _, role := range roles {
+		if user.Role == role {
+			return user, true
+		}
+	}
+	writeError(w, http.StatusForbidden, "forbidden")
+	return AuthUser{}, false
+}
+
+func (auth *authHandler) requireAdmin(w http.ResponseWriter, r *http.Request) (AuthUser, bool) {
+	return auth.requireRoles(w, r, "ADMIN")
+}
+
+func (auth *authHandler) requireEditor(w http.ResponseWriter, r *http.Request) (AuthUser, bool) {
+	return auth.requireRoles(w, r, "ADMIN", "EDITOR")
 }
 
 func (auth *authHandler) login(w http.ResponseWriter, r *http.Request) {
@@ -197,9 +230,16 @@ func (auth *authHandler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (auth *authHandler) me(w http.ResponseWriter, r *http.Request) {
-	user, ok := auth.currentUser(r)
+	identity, ok := auth.sessionUser(r)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	user, err := auth.resolveUser(ctx, identity)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
 		return
 	}
 	writeJSON(w, http.StatusOK, user)
@@ -248,9 +288,12 @@ func (auth *authHandler) accountUser(ctx context.Context, email, displayName str
 	if auth.queries == nil {
 		return AuthUser{Email: email, DisplayName: displayName, Role: defaultRole(email, auth.adminEmail)}, nil
 	}
+	return auth.accountUserWithQueries(ctx, auth.queries, email, displayName)
+}
 
+func (auth *authHandler) accountUserWithQueries(ctx context.Context, queries *database.Queries, email, displayName string) (AuthUser, error) {
 	if email == auth.adminEmail {
-		user, err := auth.queries.UpsertAdminUser(ctx, database.UpsertAdminUserParams{
+		user, err := queries.UpsertAdminUser(ctx, database.UpsertAdminUserParams{
 			Email:       email,
 			DisplayName: displayName,
 		})
@@ -262,10 +305,10 @@ func (auth *authHandler) accountUser(ctx context.Context, email, displayName str
 		}, err
 	}
 
-	user, err := auth.queries.GetUserByEmail(ctx, email)
+	user, err := queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return AuthUser{Email: email, DisplayName: displayName, Role: "USER"}, nil
+			return AuthUser{Email: email, DisplayName: displayName, Role: "VIEWER"}, nil
 		}
 		return AuthUser{}, err
 	}
@@ -281,7 +324,7 @@ func defaultRole(email, adminEmail string) string {
 	if email == adminEmail {
 		return "ADMIN"
 	}
-	return "USER"
+	return "VIEWER"
 }
 
 func normalizeEmail(email string) string {

@@ -16,9 +16,7 @@
 	const days: PlannerDay[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
 	let name = initialGroup?.name ?? '';
-	let classroomId: number | null = initialGroup
-		? (classrooms.find(({ code }) => code === initialGroup?.classroomLabel)?.id ?? null)
-		: null;
+	let classroomId: number | null = initialGroup?.classroomId ?? null;
 	let rows: GroupSessionPayload[] = initialGroup?.sessions.map(
 		({ day, startHourAcademic, durationHours }) => ({ day, startHourAcademic, durationHours }),
 	) ?? [{ day: 'MONDAY', startHourAcademic: 1, durationHours: 2 }];

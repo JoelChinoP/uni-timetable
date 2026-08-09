@@ -77,10 +77,9 @@ func TestCatalogWriteGates(t *testing.T) {
 		})
 	}
 
-	t.Run("ephemeral user forbidden", func(t *testing.T) {
-		// Sesión válida pero usuario sin registro en BD (ID 0): debe rechazar escrituras.
+	t.Run("privileges fail closed without database", func(t *testing.T) {
 		auth := &authHandler{sessions: newSessionStore()}
-		token, err := auth.sessions.create(AuthUser{ID: 0, Email: "x@unsa.edu.pe", Role: "USER"})
+		token, err := auth.sessions.create(AuthUser{ID: 1, Email: "x@unsa.edu.pe", Role: "ADMIN"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -89,8 +88,8 @@ func TestCatalogWriteGates(t *testing.T) {
 		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
 		response := httptest.NewRecorder()
 		catalog.groups(response, request)
-		if response.Code != http.StatusForbidden {
-			t.Fatalf("got %d, want 403", response.Code)
+		if response.Code != http.StatusServiceUnavailable {
+			t.Fatalf("got %d, want 503", response.Code)
 		}
 	})
 }

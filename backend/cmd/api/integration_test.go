@@ -124,9 +124,9 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	auth := &authHandler{queries: queries, sessions: sessions}
 	handler := routes(routeConfig{db: pool, sessions: sessions})
 
-	// Usuario registrado normal (no admin): puede gestionar catálogo, no usuarios.
-	registerUser(t, pool, "user@unsa.edu.pe", "USER")
-	cookie := authCookie(t, auth, AuthUser{ID: 1, Email: "user@unsa.edu.pe", Role: "USER"})
+	// El rol de la cookie se ignora: la BD resuelve EDITOR y no permite gestionar usuarios.
+	registerUser(t, pool, "user@unsa.edu.pe", "EDITOR")
+	cookie := authCookie(t, auth, AuthUser{ID: 99, Email: "user@unsa.edu.pe", Role: "ADMIN", EmailVerified: true})
 
 	mustSeed := func() {
 		_, err := pool.Exec(context.Background(), `
@@ -138,10 +138,32 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	mustSeed()
 
 	if response := doJSON(handler, "GET", "/users", "", cookie); response.Code != http.StatusForbidden {
-		t.Fatalf("USER no debe listar usuarios: %d", response.Code)
+		t.Fatalf("EDITOR no debe listar usuarios: %d", response.Code)
+	}
+	registerUser(t, pool, "admin@unsa.edu.pe", "ADMIN")
+	adminCookie := authCookie(t, auth, AuthUser{Email: "admin@unsa.edu.pe", Role: "VIEWER", EmailVerified: true})
+	response := doJSON(handler, "GET", "/users?page=1&pageSize=1", "", adminCookie)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"pageSize":1`) || !strings.Contains(response.Body.String(), `"total":2`) {
+		t.Fatalf("paginated users: %d %s", response.Code, response.Body.String())
+	}
+	response = doJSON(handler, "POST", "/users", `{"email":"new@unsa.edu.pe","displayName":"Nueva Editora"}`, adminCookie)
+	if response.Code != http.StatusCreated || !strings.Contains(response.Body.String(), `"role":"EDITOR"`) {
+		t.Fatalf("create editor: %d %s", response.Code, response.Body.String())
+	}
+	response = doJSON(handler, "PUT", "/users/3", `{"email":"editora@unsa.edu.pe","displayName":"Editora Actualizada","role":"EDITOR"}`, adminCookie)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Editora Actualizada") {
+		t.Fatalf("update editor: %d %s", response.Code, response.Body.String())
+	}
+	response = doJSON(handler, "DELETE", "/users/3", "", adminCookie)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("delete editor: %d %s", response.Code, response.Body.String())
+	}
+	response = doJSON(handler, "DELETE", "/users/2", "", adminCookie)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("self delete admin: %d, want 409", response.Code)
 	}
 
-	response := doJSON(handler, "POST", "/classrooms", `{"code":"Aula 999","type":"THEORY"}`, cookie)
+	response = doJSON(handler, "POST", "/classrooms", `{"code":"Aula 999","type":"THEORY"}`, cookie)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("create classroom: %d %s", response.Code, response.Body.String())
 	}
@@ -354,8 +376,8 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 		t.Fatalf("delete lab course: %d", response.Code)
 	}
 
-	// Usuarios no registrados (ID 0) no escriben aunque tengan sesión válida.
-	ephemeral := authCookie(t, auth, AuthUser{ID: 0, Email: "ghost@unsa.edu.pe", Role: "USER"})
+	// Un rol ADMIN obsoleto en cookie no autoriza a un correo sin registro.
+	ephemeral := authCookie(t, auth, AuthUser{ID: 1, Email: "ghost@unsa.edu.pe", Role: "ADMIN", EmailVerified: true})
 	response = doJSON(handler, "POST", "/classrooms", `{"code":"Aula 1000","type":"THEORY"}`, ephemeral)
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("ephemeral user: %d, want 403", response.Code)

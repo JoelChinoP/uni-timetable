@@ -54,8 +54,8 @@ type seedData struct {
 }
 
 var courseColors = []string{
-	"#3b82f6", "#8b5cf6", "#ec4899", "#ef4444", "#f97316",
-	"#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#6366f1",
+	"#1677ff", "#7c3aed", "#e11d73", "#e03131", "#f76707",
+	"#d99500", "#00a878", "#008f9c", "#0077b6", "#5f3dc4",
 }
 
 var dayToEnum = map[string]string{
@@ -191,7 +191,7 @@ func seed(ctx context.Context, pool *pgxpool.Pool, data *seedData) error {
 			if !ok {
 				return fmt.Errorf("curso %s tiene laboratorio sin teoría", key)
 			}
-			id, err := insertCourse(ctx, tx, careerID, course.Year, course.Name, course.LabCodes[0]+"-L", key+"-L", "LABORATORY", &theoryID, courseColors[indexOf(keys, key)%len(courseColors)])
+			id, err := insertCourse(ctx, tx, careerID, course.Year, "Lab - "+course.Name, "LAB-"+course.LabCodes[0], "LAB-"+key, "LABORATORY", &theoryID, courseColors[indexOf(keys, key)%len(courseColors)])
 			if err != nil {
 				return fmt.Errorf("curso lab %s: %w", key, err)
 			}

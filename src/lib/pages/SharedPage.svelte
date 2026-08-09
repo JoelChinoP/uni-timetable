@@ -118,7 +118,7 @@
 				Cargando horario compartido…
 			</section>
 		{:else}
-			<div class="flex min-h-[34rem] flex-1 flex-col lg:min-h-0">
+			<div class="flex min-h-[34rem] flex-1 flex-col overflow-auto lg:min-h-0">
 				<WeeklyPlanner
 					days={data.days}
 					academicHours={data.academicHours}

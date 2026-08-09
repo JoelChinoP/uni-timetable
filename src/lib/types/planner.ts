@@ -26,6 +26,7 @@ export interface GroupSession {
 export interface CourseGroup {
 	id: number;
 	name: string;
+	classroomId: number | null;
 	classroomLabel: string;
 	sessions: GroupSession[];
 }
@@ -88,6 +89,7 @@ export interface PlannerEvent {
 	endHourAcademic: number;
 	durationHours: number;
 	mode: SessionMode;
+	classroomId: number | null;
 	classroomLabel: string;
 	color: string;
 	lane: number;

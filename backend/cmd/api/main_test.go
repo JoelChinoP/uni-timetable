@@ -66,3 +66,10 @@ func TestIdentityHelpers(t *testing.T) {
 		t.Fatal("validEmail failed")
 	}
 }
+
+func TestUserPageParamsRejectsOffsetOverflow(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/users?page=214748366&pageSize=10", nil)
+	if _, _, ok := userPageParams(request); ok {
+		t.Fatal("userPageParams accepted an offset that overflows int32")
+	}
+}

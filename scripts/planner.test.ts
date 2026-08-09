@@ -7,6 +7,7 @@ import {
 	matchesCourseSearch,
 } from '../src/lib/utils/planner.ts';
 import type { Course, SelectedCourseGroup } from '../src/lib/types/planner.ts';
+import { buildCalendarResources } from '../src/lib/utils/calendarResources.ts';
 
 const course = (
 	id: number,
@@ -32,6 +33,9 @@ void test('groups theory and laboratory as one course unit', () => {
 	const lab = course(2, 'LABORATORY', 1);
 	assert.deepEqual(groupRelatedCourses([theory, lab]), [{ key: '1', theory, laboratories: [lab] }]);
 	assert.equal(matchesCourseSearch(theory, 'sig1'), true);
+	theory.name = 'Cálculo y Lingüística';
+	assert.equal(matchesCourseSearch(theory, 'CALCULO'), true);
+	assert.equal(matchesCourseSearch(theory, 'linguistica'), true);
 });
 
 void test('only direct overlaps are reported as conflicts', () => {
@@ -40,6 +44,7 @@ void test('only direct overlaps are reported as conflicts', () => {
 		const group = {
 			id,
 			name: 'A',
+			classroomId: 1,
 			classroomLabel: '',
 			sessions: [
 				{
@@ -61,4 +66,45 @@ void test('only direct overlaps are reported as conflicts', () => {
 	assert.deepEqual(events[0].conflictIds, [events[1].id]);
 	assert.deepEqual(events[2].conflictIds, [events[1].id]);
 	assert.equal(events[0].conflictIds.includes(events[2].id), false);
+});
+
+void test('calendar export starts on the first matching weekday in range', () => {
+	const item = course(1, 'THEORY');
+	const group = {
+		id: 1,
+		name: 'A',
+		classroomId: 1,
+		classroomLabel: 'A-101',
+		sessions: [
+			{
+				id: 1,
+				title: item.name,
+				day: 'MONDAY' as const,
+				startHourAcademic: 1,
+				durationHours: 1,
+				mode: 'THEORY' as const,
+				classroomLabel: 'A-101',
+			},
+		],
+	};
+	item.groups = [group];
+	const { events } = buildPlannerEvents([{ course: item, group }]);
+	const resources = buildCalendarResources(
+		events,
+		[{ hourNumber: 1, startTime: '07:00', endTime: '07:50' }],
+		'2026-08-08',
+		'2026-08-31',
+	);
+	assert.equal(resources[0].start.dateTime, '2026-08-10T07:00:00');
+	assert.deepEqual(resources[0].recurrence, ['RRULE:FREQ=WEEKLY;UNTIL=20260831T235959Z']);
+	assert.match(resources[0].id, /^[a-v0-9]{5,1024}$/);
+	assert.equal(
+		resources[0].id,
+		buildCalendarResources(
+			events,
+			[{ hourNumber: 1, startTime: '07:00', endTime: '07:50' }],
+			'2026-08-08',
+			'2026-08-31',
+		)[0].id,
+	);
 });

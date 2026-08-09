@@ -26,14 +26,14 @@ type catalogHandler struct {
 }
 
 var (
-	courseCodePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 .-]{0,23}$`)
+	courseCodePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 .-]{0,31}$`)
 	groupNamePattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,9}$`)
 	colorPattern      = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 )
 
 var courseColors = []string{
-	"#3b82f6", "#8b5cf6", "#ec4899", "#ef4444", "#f97316",
-	"#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#6366f1",
+	"#1677ff", "#7c3aed", "#e11d73", "#e03131", "#f76707",
+	"#d99500", "#00a878", "#008f9c", "#0077b6", "#5f3dc4",
 }
 
 func catalogTimeout(r *http.Request) (context.Context, context.CancelFunc) {
@@ -66,20 +66,8 @@ func pathID(r *http.Request, name string) (int32, bool) {
 }
 
 func requireCatalogUser(catalog *catalogHandler, w http.ResponseWriter, r *http.Request) bool {
-	user, ok := catalog.auth.currentUser(r)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return false
-	}
-	if user.ID == 0 {
-		writeError(w, http.StatusForbidden, "tu cuenta aún no está registrada")
-		return false
-	}
-	if catalog.queries == nil {
-		writeError(w, http.StatusServiceUnavailable, "database is not configured")
-		return false
-	}
-	return true
+	_, ok := catalog.auth.requireEditor(w, r)
+	return ok
 }
 
 // ---------- Aulas ----------
@@ -484,8 +472,8 @@ func normalizeCourseRequest(request courseRequest) (courseValues, error) {
 	if len(values.name) < 3 || len(values.name) > 100 {
 		return values, fmt.Errorf("name debe tener entre 3 y 100 caracteres")
 	}
-	if values.abbreviation == "" || len(values.abbreviation) > 10 {
-		return values, fmt.Errorf("abbreviation debe tener entre 1 y 10 caracteres")
+	if values.abbreviation == "" || len(values.abbreviation) > 20 {
+		return values, fmt.Errorf("abbreviation debe tener entre 1 y 20 caracteres")
 	}
 	if request.Type != "THEORY" && request.Type != "LABORATORY" {
 		return values, fmt.Errorf("type debe ser THEORY o LABORATORY")
@@ -497,14 +485,19 @@ func normalizeCourseRequest(request courseRequest) (courseValues, error) {
 		return values, fmt.Errorf("un laboratorio necesita su curso de teoría")
 	}
 
-	values.code = values.abbreviation
 	if request.Type == "LABORATORY" {
-		values.code += "-L"
-		values.abbreviation += "-L"
+		if !strings.HasPrefix(strings.ToLower(values.name), "lab - ") {
+			values.name = "Lab - " + values.name
+		}
+		values.abbreviation = strings.TrimSuffix(values.abbreviation, "-L")
+		if !strings.HasPrefix(values.abbreviation, "LAB-") {
+			values.abbreviation = "LAB-" + values.abbreviation
+		}
 	}
-	if len(values.abbreviation) > 10 {
-		return values, fmt.Errorf("abbreviation debe tener como máximo 8 caracteres para laboratorios")
+	if len(values.abbreviation) > 20 {
+		return values, fmt.Errorf("abbreviation debe tener como máximo 16 caracteres para laboratorios")
 	}
+	values.code = values.abbreviation
 	if !courseCodePattern.MatchString(values.code) {
 		return values, fmt.Errorf("código de curso inválido")
 	}

@@ -9,6 +9,28 @@ import (
 	"context"
 )
 
+const countAdmins = `-- name: CountAdmins :one
+SELECT count(*) FROM app.users WHERE role = 'ADMIN'
+`
+
+func (q *Queries) CountAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT count(*) FROM app.users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO app.users (email, display_name)
 VALUES ($1, $2)
@@ -39,6 +61,18 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM app.users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id int32) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, display_name, role
 FROM app.users
@@ -64,28 +98,59 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 	return i, err
 }
 
-const listUsers = `-- name: ListUsers :many
+const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, display_name, role
 FROM app.users
-ORDER BY created_at DESC, id DESC
+WHERE id = $1
 `
 
-type ListUsersRow struct {
+type GetUserByIDRow struct {
 	ID          int32
 	Email       string
 	DisplayName string
 	Role        AppUserRole
 }
 
-func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
-	rows, err := q.db.Query(ctx, listUsers)
+func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.Role,
+	)
+	return i, err
+}
+
+const listUsersPage = `-- name: ListUsersPage :many
+SELECT id, email, display_name, role
+FROM app.users
+ORDER BY created_at DESC, id DESC
+LIMIT $2::int OFFSET $1::int
+`
+
+type ListUsersPageParams struct {
+	OffsetRows int32
+	PageSize   int32
+}
+
+type ListUsersPageRow struct {
+	ID          int32
+	Email       string
+	DisplayName string
+	Role        AppUserRole
+}
+
+func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]ListUsersPageRow, error) {
+	rows, err := q.db.Query(ctx, listUsersPage, arg.OffsetRows, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListUsersRow
+	var items []ListUsersPageRow
 	for rows.Next() {
-		var i ListUsersRow
+		var i ListUsersPageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Email,
@@ -100,6 +165,44 @@ func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE app.users
+SET email = $2, display_name = $3, role = $4
+WHERE id = $1
+RETURNING id, email, display_name, role
+`
+
+type UpdateUserParams struct {
+	ID          int32
+	Email       string
+	DisplayName string
+	Role        AppUserRole
+}
+
+type UpdateUserRow struct {
+	ID          int32
+	Email       string
+	DisplayName string
+	Role        AppUserRole
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.ID,
+		arg.Email,
+		arg.DisplayName,
+		arg.Role,
+	)
+	var i UpdateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.Role,
+	)
+	return i, err
 }
 
 const upsertAdminUser = `-- name: UpsertAdminUser :one

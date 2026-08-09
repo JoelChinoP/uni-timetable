@@ -97,7 +97,7 @@ func (q *Queries) ListPlannerCourses(ctx context.Context, code string) ([]ListPl
 }
 
 const listPlannerGroups = `-- name: ListPlannerGroups :many
-SELECT g.id, g.id_course, g.name, cl.code AS classroom_code
+SELECT g.id, g.id_course, g.name, g.id_classroom, cl.code AS classroom_code
 FROM app.groups g
 JOIN app.courses c ON c.id = g.id_course
 JOIN app.careers cr ON cr.id = c.id_career
@@ -110,6 +110,7 @@ type ListPlannerGroupsRow struct {
 	ID            int32
 	IDCourse      int32
 	Name          string
+	IDClassroom   pgtype.Int4
 	ClassroomCode pgtype.Text
 }
 
@@ -126,6 +127,7 @@ func (q *Queries) ListPlannerGroups(ctx context.Context, code string) ([]ListPla
 			&i.ID,
 			&i.IDCourse,
 			&i.Name,
+			&i.IDClassroom,
 			&i.ClassroomCode,
 		); err != nil {
 			return nil, err

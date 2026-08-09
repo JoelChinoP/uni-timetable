@@ -6,7 +6,7 @@
 	import CourseCatalog from '../components/panel/CourseCatalog.svelte';
 	import GroupFormModal from '../components/panel/GroupFormModal.svelte';
 	import CourseFormModal from '../components/panel/CourseFormModal.svelte';
-	import { createUser, loadUsers } from '../api/auth';
+	import { createUser, deleteUser, loadUsers, updateUser } from '../api/auth';
 	import { getDashboard } from '../api/planner';
 	import {
 		createClassroom,
@@ -29,7 +29,13 @@
 		type TeacherItem,
 	} from '../api/catalog';
 	import type { Course, CourseGroup, PlannerData } from '../types/planner';
-	import type { AuthUser } from '../types/auth';
+	import {
+		canEditCatalog,
+		canManageUsers,
+		type AuthUser,
+		type ManagedRole,
+		type ManagedUser,
+	} from '../types/auth';
 
 	export let user: AuthUser | null = null;
 	export let onNavigate: (path: string) => void;
@@ -42,9 +48,13 @@
 	let data: PlannerData | null = null;
 	let classrooms: ClassroomItem[] = [];
 	let teachers: TeacherItem[] = [];
-	let users: AuthUser[] = [];
+	let users: ManagedUser[] = [];
+	let userPage = 1;
+	let userPageSize = 10;
+	let userTotal = 0;
 	let loadError = '';
 	let actionMessage = '';
+	let actionError = false;
 	let busy = false;
 	let modalError = '';
 
@@ -66,9 +76,15 @@
 	let teacherLastName = '';
 	let userEmail = '';
 	let userName = '';
+	let editingUser: ManagedUser | null = null;
+	let editedUserEmail = '';
+	let editedUserName = '';
+	let editedUserRole: ManagedRole = 'EDITOR';
+	let userModalError = '';
 
-	$: isAdmin = user?.role === 'ADMIN';
-	$: registered = !!user && user.id !== 0;
+	$: isAdmin = canManageUsers(user);
+	$: registered = canEditCatalog(user);
+	$: userPageCount = Math.max(1, Math.ceil(userTotal / userPageSize));
 	$: tabs = [
 		{ id: 'courses' as const, label: 'Cursos' },
 		{ id: 'classrooms' as const, label: 'Aulas' },
@@ -91,7 +107,16 @@
 			data = dashboard;
 			classrooms = nextClassrooms;
 			teachers = nextTeachers;
-			if (isAdmin) users = await loadUsers();
+			if (isAdmin) {
+				let nextUsers = await loadUsers(userPage, userPageSize);
+				const maxPage = Math.max(1, Math.ceil(nextUsers.total / userPageSize));
+				if (userPage > maxPage) {
+					userPage = maxPage;
+					nextUsers = await loadUsers(userPage, userPageSize);
+				}
+				users = nextUsers.items;
+				userTotal = nextUsers.total;
+			}
 		} catch (error) {
 			loadError = error instanceof Error ? error.message : 'No se pudo cargar el panel';
 		}
@@ -100,12 +125,14 @@
 	async function run(action: () => Promise<unknown>, success: string) {
 		busy = true;
 		actionMessage = '';
+		actionError = false;
 		try {
 			await action();
 			await refreshAll();
 			actionMessage = success;
 			return true;
 		} catch (error) {
+			actionError = true;
 			actionMessage = error instanceof Error ? error.message : 'La acción falló';
 			return false;
 		} finally {
@@ -122,6 +149,7 @@
 			showCourseForm = false;
 			editingCourse = null;
 			await refreshAll();
+			actionError = false;
 			actionMessage = 'Curso guardado.';
 		} catch (error) {
 			modalError = error instanceof Error ? error.message : 'No se pudo guardar el curso';
@@ -139,6 +167,7 @@
 			groupCourse = null;
 			editingGroup = null;
 			await refreshAll();
+			actionError = false;
 			actionMessage = 'Grupo y horarios guardados.';
 		} catch (error) {
 			modalError = error instanceof Error ? error.message : 'No se pudo guardar el grupo';
@@ -204,6 +233,54 @@
 		}
 	}
 
+	function openUser(registeredUser: ManagedUser) {
+		userModalError = '';
+		editingUser = registeredUser;
+		editedUserEmail = registeredUser.email;
+		editedUserName = registeredUser.displayName;
+		editedUserRole = registeredUser.role;
+	}
+
+	async function saveUser() {
+		if (!editingUser) return;
+		userModalError = '';
+		busy = true;
+		try {
+			await updateUser(
+				editingUser.id,
+				editedUserEmail.trim().toLowerCase(),
+				editedUserName.trim(),
+				editedUserRole,
+			);
+			await refreshAll();
+			editingUser = null;
+			actionError = false;
+			actionMessage = 'Usuario actualizado.';
+		} catch (error) {
+			userModalError = error instanceof Error ? error.message : 'No se pudo actualizar el usuario';
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function changeUserPage(nextPage: number) {
+		if (nextPage < 1 || nextPage > userPageCount || nextPage === userPage) return;
+		busy = true;
+		actionMessage = '';
+		actionError = false;
+		try {
+			const nextUsers = await loadUsers(nextPage, userPageSize);
+			userPage = nextPage;
+			users = nextUsers.items;
+			userTotal = nextUsers.total;
+		} catch (error) {
+			actionError = true;
+			actionMessage = error instanceof Error ? error.message : 'No se pudieron cargar los usuarios';
+		} finally {
+			busy = false;
+		}
+	}
+
 	function askDelete(label: string, action: () => Promise<unknown>, success: string) {
 		deleteTarget = { label, action, success };
 	}
@@ -236,9 +313,7 @@
 		{:else if !registered}
 			<section class="neo-panel p-8 text-center">
 				<h1 class="text-3xl font-extrabold text-warning">Cuenta no registrada</h1>
-				<p class="mt-3 text-secondary">
-					Un administrador debe registrar tu correo antes de editar el catálogo.
-				</p>
+				<p class="mt-3 text-secondary">Tu cuenta no tiene permisos para editar el catálogo.</p>
 				<button
 					class="neo-button mt-6 min-h-11 px-5 font-bold text-primary"
 					type="button"
@@ -273,8 +348,8 @@
 					>
 				</div>{/if}
 			{#if actionMessage}<p
-					class="mt-4 rounded-2xl bg-success-soft px-4 py-3 text-sm font-semibold text-success"
-					role="status"
+					class={`mt-4 rounded-2xl px-4 py-3 text-sm font-semibold ${actionError ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}
+					role={actionError ? 'alert' : 'status'}
 					aria-live="polite"
 				>
 					{actionMessage}
@@ -322,6 +397,7 @@
 					{#if data}<CourseCatalog
 							courses={data.courses}
 							academicHours={data.academicHours}
+							{classrooms}
 							onAddGroup={(course) => {
 								modalError = '';
 								groupCourse = course;
@@ -378,6 +454,11 @@
 									{classroom.floor === null ? 'Piso no indicado' : `Piso ${classroom.floor}`}
 								</p>
 								<div class="mt-4 flex gap-2">
+									<button
+										class="neo-button min-h-10 flex-1 text-xs font-bold text-accent"
+										type="button"
+										on:click={() => onNavigate(`/aulas?classroom=${classroom.id}`)}>Horario</button
+									>
 									<button
 										class="neo-button min-h-10 flex-1 text-xs font-bold text-primary"
 										type="button"
@@ -442,7 +523,7 @@
 					<header class="border-b border-border-subtle px-4 py-3 sm:px-5">
 						<h2 class="text-lg font-extrabold text-primary">Usuarios autorizados</h2>
 						<p class="mt-0.5 text-xs text-secondary">
-							Registra las cuentas que pueden editar los horarios.
+							Registra cuentas y administra sus roles sin exponer controles a los editores.
 						</p>
 					</header>
 					<div class="p-4 sm:p-5">
@@ -479,17 +560,76 @@
 									><tr
 										><th class="px-3 py-3">Correo</th><th class="px-3 py-3">Nombre</th><th
 											class="px-3 py-3">Rol</th
-										></tr
+										><th class="px-3 py-3 text-right">Acciones</th></tr
 									></thead
 								><tbody class="divide-y divide-grid"
 									>{#each users as registeredUser (registeredUser.email)}<tr
 											><td class="px-3 py-3 font-semibold text-primary">{registeredUser.email}</td
 											><td class="px-3 py-3 text-secondary">{registeredUser.displayName}</td><td
 												class="px-3 py-3 text-secondary">{registeredUser.role}</td
+											><td class="px-3 py-2"
+												><div class="flex justify-end gap-1">
+													<button
+														class="neo-button grid h-10 w-10 place-items-center text-primary disabled:opacity-35"
+														type="button"
+														title="Editar usuario"
+														aria-label={`Editar ${registeredUser.email}`}
+														disabled={registeredUser.id === user?.id}
+														on:click={() => openUser(registeredUser)}
+														><svg
+															class="h-4 w-4 stroke-current"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke-width="2"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															aria-hidden="true"
+															><path d="M12 20h9" /><path
+																d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"
+															/></svg
+														></button
+													><button
+														class="grid h-10 w-10 place-items-center rounded-xl text-warning hover:bg-warning-soft disabled:opacity-35"
+														type="button"
+														title="Eliminar usuario"
+														aria-label={`Eliminar ${registeredUser.email}`}
+														disabled={registeredUser.id === user?.id}
+														on:click={() =>
+															askDelete(
+																registeredUser.email,
+																() => deleteUser(registeredUser.id),
+																'Usuario eliminado.',
+															)}
+														><svg
+															class="h-4 w-4 stroke-current"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke-width="2"
+															stroke-linecap="round"
+															aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" /></svg
+														></button
+													>
+												</div></td
 											></tr
 										>{/each}</tbody
 								>
 							</table>
+						</div>
+						<div class="mt-3 flex items-center justify-between gap-3 text-xs text-secondary">
+							<span>{userTotal} usuarios</span>
+							<div class="flex items-center gap-2">
+								<button
+									class="neo-button min-h-10 px-3 font-bold text-primary disabled:opacity-35"
+									type="button"
+									disabled={busy || userPage <= 1}
+									on:click={() => changeUserPage(userPage - 1)}>Anterior</button
+								><span>{userPage} / {userPageCount}</span><button
+									class="neo-button min-h-10 px-3 font-bold text-primary disabled:opacity-35"
+									type="button"
+									disabled={busy || userPage >= userPageCount}
+									on:click={() => changeUserPage(userPage + 1)}>Siguiente</button
+								>
+							</div>
 						</div>
 					</div>
 				{/if}
@@ -594,6 +734,46 @@
 				>
 			</form></Modal
 		>{/if}
+
+	{#if editingUser}<Modal title="Editar usuario" onClose={() => (editingUser = null)}>
+			<form class="grid gap-3 sm:grid-cols-2" on:submit|preventDefault={saveUser}>
+				<label class="flex flex-col gap-1.5 sm:col-span-2"
+					><span class={labelClass}>Correo</span><input
+						class={fieldClass}
+						bind:value={editedUserEmail}
+						autocomplete="email"
+						required
+						type="email"
+					/></label
+				>
+				<label class="flex flex-col gap-1.5"
+					><span class={labelClass}>Nombre</span><input
+						class={fieldClass}
+						bind:value={editedUserName}
+						autocomplete="name"
+						required
+						type="text"
+					/></label
+				>
+				<label class="flex flex-col gap-1.5"
+					><span class={labelClass}>Rol</span><select class={fieldClass} bind:value={editedUserRole}
+						><option value="EDITOR">Editor</option><option value="ADMIN">Administrador</option
+						></select
+					></label
+				>
+				{#if userModalError}<p
+						class="rounded-xl bg-warning-soft px-3 py-2 text-sm font-semibold text-warning sm:col-span-2"
+						role="alert"
+					>
+						{userModalError}
+					</p>{/if}
+				<button
+					class="min-h-12 rounded-xl bg-accent-strong px-4 text-sm font-bold text-white disabled:opacity-50 sm:col-span-2"
+					disabled={busy}
+					type="submit">{busy ? 'Guardando…' : 'Guardar usuario'}</button
+				>
+			</form>
+		</Modal>{/if}
 
 	{#if deleteTarget}<Modal title="Confirmar eliminación" onClose={() => (deleteTarget = null)}
 			><div>

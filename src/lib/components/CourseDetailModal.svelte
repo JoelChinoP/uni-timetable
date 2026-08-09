@@ -131,66 +131,96 @@
 		</div>
 
 		<div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" role="tabpanel">
-			{#if primary.summary}<p class="mb-4 max-w-3xl text-sm leading-6 text-secondary">
-					{primary.summary}
-				</p>{/if}
-			<div class="grid gap-4 xl:grid-cols-2">
-				{#each visibleCourses as visibleCourse (visibleCourse.id)}
-					<section class="neo-card p-3 sm:p-4">
-						<div class="flex items-center justify-between gap-3">
-							<div>
-								<p class="text-[9px] font-extrabold tracking-[0.18em] text-muted uppercase">
-									{visibleCourse.type === 'THEORY' ? 'Teoría' : visibleCourse.abbreviation}
-								</p>
-								<h3 class="mt-1 text-base font-extrabold text-primary">Grupos y horarios</h3>
-							</div>
-							<span
-								class="rounded-lg bg-surface-muted px-2 py-1 text-[10px] font-bold text-secondary"
-								>{visibleCourse.groups.length} grupos</span
-							>
+			<div class="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+				<aside class="neo-card h-fit p-4">
+					<p class="text-[9px] font-extrabold tracking-[0.18em] text-muted uppercase">
+						Información del curso
+					</p>
+					{#if primary.summary}<p class="mt-3 text-sm leading-6 text-secondary">
+							{primary.summary}
+						</p>{:else}<p class="mt-3 text-sm leading-6 text-muted">
+							Sin descripción registrada.
+						</p>{/if}
+					<dl class="mt-4 grid grid-cols-2 gap-3 text-xs">
+						<div class="rounded-xl bg-surface-muted p-3">
+							<dt class="font-bold text-muted">Código</dt>
+							<dd class="mt-1 font-extrabold text-primary">{primary.abbreviation}</dd>
 						</div>
-						{#if visibleCourse.groups.length === 0}
-							<p
-								class="mt-3 rounded-xl border border-dashed border-border-strong p-3 text-xs text-secondary"
-							>
-								No hay grupos registrados.
-							</p>
-						{:else}
-							<div class="mt-3 space-y-2">
-								{#each visibleCourse.groups as group (group.id)}
-									<article
-										class={`rounded-xl border p-3 ${selectedGroups[String(visibleCourse.id)] === group.id ? 'border-accent bg-accent-soft' : 'border-border-subtle bg-surface-muted/70'}`}
-									>
-										<div class="flex items-center justify-between gap-2">
-											<strong class="text-sm text-primary">Grupo {group.name}</strong
-											>{#if selectedGroups[String(visibleCourse.id)] === group.id}<span
-													class="text-[10px] font-bold text-accent">Seleccionado</span
-												>{/if}
-										</div>
-										<div class="mt-2 space-y-1.5">
-											{#each group.sessions as session (session.id)}
-												<div
-													class={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs ${session.id === focusedSessionId ? 'bg-accent-soft ring-2 ring-accent/30' : conflictEventIds.has(session.id) ? 'bg-warning-soft' : 'bg-surface'}`}
-												>
-													<span class="font-semibold text-primary"
-														>{getDayLabel(session.day)} · {formatTimeRange(
-															session.startHourAcademic,
-															session.durationHours,
-															academicHours,
-														)}</span
-													><span class="text-secondary">{session.classroomLabel || 'Sin aula'}</span
-													>{#if conflictEventIds.has(session.id)}<span
-															class="font-bold text-warning">Cruce</span
-														>{/if}
-												</div>
-											{/each}
-										</div>
-									</article>
-								{/each}
+						<div class="rounded-xl bg-surface-muted p-3">
+							<dt class="font-bold text-muted">Año</dt>
+							<dd class="mt-1 font-extrabold text-primary">{primary.academicYear}°</dd>
+						</div>
+						<div class="rounded-xl bg-surface-muted p-3">
+							<dt class="font-bold text-muted">Docente</dt>
+							<dd class="mt-1 font-extrabold text-primary">
+								{primary.teacher?.fullName ?? 'Por asignar'}
+							</dd>
+						</div>
+						<div class="rounded-xl bg-surface-muted p-3">
+							<dt class="font-bold text-muted">Créditos</dt>
+							<dd class="mt-1 font-extrabold text-primary">{primary.credits ?? 'No indicados'}</dd>
+						</div>
+					</dl>
+				</aside>
+				<div class="space-y-4">
+					{#each visibleCourses as visibleCourse (visibleCourse.id)}
+						<section class="neo-card p-3 sm:p-4">
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<p class="text-[9px] font-extrabold tracking-[0.18em] text-muted uppercase">
+										{visibleCourse.type === 'THEORY' ? 'Teoría' : visibleCourse.abbreviation}
+									</p>
+									<h3 class="mt-1 text-base font-extrabold text-primary">Grupos y horarios</h3>
+								</div>
+								<span
+									class="rounded-lg bg-surface-muted px-2 py-1 text-[10px] font-bold text-secondary"
+									>{visibleCourse.groups.length} grupos</span
+								>
 							</div>
-						{/if}
-					</section>
-				{/each}
+							{#if visibleCourse.groups.length === 0}
+								<p
+									class="mt-3 rounded-xl border border-dashed border-border-strong p-3 text-xs text-secondary"
+								>
+									No hay grupos registrados.
+								</p>
+							{:else}
+								<div class="mt-3 space-y-2">
+									{#each visibleCourse.groups as group (group.id)}
+										<article
+											class={`rounded-xl border p-3 ${selectedGroups[String(visibleCourse.id)] === group.id ? 'border-accent bg-accent-soft' : 'border-border-subtle bg-surface-muted/70'}`}
+										>
+											<div class="flex items-center justify-between gap-2">
+												<strong class="text-sm text-primary">Grupo {group.name}</strong
+												>{#if selectedGroups[String(visibleCourse.id)] === group.id}<span
+														class="text-[10px] font-bold text-accent">Seleccionado</span
+													>{/if}
+											</div>
+											<div class="mt-2 space-y-1.5">
+												{#each group.sessions as session (session.id)}
+													<div
+														class={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs ${session.id === focusedSessionId ? 'bg-accent-soft ring-2 ring-accent/30' : conflictEventIds.has(session.id) ? 'bg-warning-soft' : 'bg-surface'}`}
+													>
+														<span class="font-semibold text-primary"
+															>{getDayLabel(session.day)} · {formatTimeRange(
+																session.startHourAcademic,
+																session.durationHours,
+																academicHours,
+															)}</span
+														><span class="text-secondary"
+															>{session.classroomLabel || 'Sin aula'}</span
+														>{#if conflictEventIds.has(session.id)}<span
+																class="font-bold text-warning">Cruce</span
+															>{/if}
+													</div>
+												{/each}
+											</div>
+										</article>
+									{/each}
+								</div>
+							{/if}
+						</section>
+					{/each}
+				</div>
 			</div>
 		</div>
 	</div>

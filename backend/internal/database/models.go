@@ -56,8 +56,8 @@ func (ns NullAppModeType) Value() (driver.Value, error) {
 type AppUserRole string
 
 const (
-	AppUserRoleADMIN AppUserRole = "ADMIN"
-	AppUserRoleUSER  AppUserRole = "USER"
+	AppUserRoleADMIN  AppUserRole = "ADMIN"
+	AppUserRoleEDITOR AppUserRole = "EDITOR"
 )
 
 func (e *AppUserRole) Scan(src interface{}) error {

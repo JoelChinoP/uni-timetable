@@ -43,6 +43,7 @@ type sessionJSON struct {
 type groupJSON struct {
 	ID             int32         `json:"id"`
 	Name           string        `json:"name"`
+	ClassroomID    *int32        `json:"classroomId"`
 	ClassroomLabel string        `json:"classroomLabel"`
 	Sessions       []sessionJSON `json:"sessions"`
 }
@@ -111,9 +112,13 @@ func (handler *plannerHandler) dashboard(w http.ResponseWriter, r *http.Request)
 			label = row.ClassroomCode.String
 		}
 		classroomByGroup[row.ID] = label
-		groupsByCourse[row.IDCourse] = append(groupsByCourse[row.IDCourse], groupJSON{
+		group := groupJSON{
 			ID: row.ID, Name: row.Name, ClassroomLabel: label, Sessions: []sessionJSON{},
-		})
+		}
+		if row.IDClassroom.Valid {
+			group.ClassroomID = &row.IDClassroom.Int32
+		}
+		groupsByCourse[row.IDCourse] = append(groupsByCourse[row.IDCourse], group)
 	}
 
 	sessionsByGroup := make(map[int32][]sessionJSON)

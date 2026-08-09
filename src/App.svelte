@@ -5,6 +5,7 @@
 	import PanelPage from './lib/pages/PanelPage.svelte';
 	import DashboardPage from './lib/pages/DashboardPage.svelte';
 	import SharedPage from './lib/pages/SharedPage.svelte';
+	import ClassroomsPage from './lib/pages/ClassroomsPage.svelte';
 	import NotFoundPage from './lib/pages/NotFoundPage.svelte';
 	import { loadSession, logoutSession } from './lib/api/auth';
 	import type { AuthUser } from './lib/types/auth';
@@ -15,7 +16,7 @@
 
 	function navigate(nextPath: string) {
 		window.history.pushState({}, '', nextPath);
-		path = nextPath;
+		path = new URL(nextPath, window.location.origin).pathname;
 	}
 
 	function onPopState() {
@@ -54,6 +55,8 @@
 	{:else}
 		<div class="grid min-h-dvh place-items-center text-secondary">Comprobando sesión…</div>
 	{/if}
+{:else if path === '/aulas'}
+	<ClassroomsPage {user} busy={!sessionKnown} onNavigate={navigate} onLogout={logoutUser} />
 {:else if /^\/s\/[A-Za-z0-9]{10}$/.test(path)}
 	<SharedPage
 		shareId={path.slice(3)}

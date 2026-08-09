@@ -5,8 +5,9 @@
 		deriveBoardBounds,
 		formatBoardHour,
 		getAcademicTimeRange,
+		getDayCode,
 		getDayLabel,
-		getModeLabel,
+		plannerDays,
 	} from '../utils/planner';
 
 	export let days: PlannerDay[] = [];
@@ -14,8 +15,8 @@
 	export let events: PlannerEvent[] = [];
 	export let onOpenEvent: (event: PlannerEvent) => void;
 
-	let activeDay: PlannerDay = 'MONDAY';
-	$: if (days.length > 0 && !days.includes(activeDay)) activeDay = days[0];
+	let showMobileConflicts = false;
+	const boardDays = plannerDays;
 	$: bounds = deriveBoardBounds(academicHours);
 	$: startMinutes = bounds.startHour * 60;
 	$: totalMinutes = (bounds.endHour - bounds.startHour) * 60;
@@ -23,7 +24,7 @@
 		{ length: bounds.endHour - bounds.startHour },
 		(_, index) => bounds.startHour + index,
 	);
-	$: eventsByDay = days.reduce<Record<PlannerDay, PlannerEvent[]>>(
+	$: eventsByDay = boardDays.reduce<Record<PlannerDay, PlannerEvent[]>>(
 		(grouped, day) => {
 			grouped[day] = events
 				.filter((event) => event.day === day)
@@ -32,7 +33,8 @@
 		},
 		{} as Record<PlannerDay, PlannerEvent[]>,
 	);
-	$: dayColumnsStyle = `grid-template-columns: repeat(${days.length}, minmax(0, 1fr));`;
+	$: conflictingEvents = events.filter((event) => event.conflictIds.length > 0);
+	const dayColumnsStyle = `grid-template-columns: repeat(${boardDays.length}, minmax(0, 1fr));`;
 	$: rowsStyle = `grid-template-rows: repeat(${boardHours.length}, minmax(0, 1fr));`;
 
 	function getEventLayout(event: PlannerEvent) {
@@ -49,120 +51,102 @@
 </script>
 
 <section
-	class="neo-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+	class="neo-panel planner-island flex min-h-[720px] min-w-0 flex-1 flex-col overflow-auto"
+	data-source-days={days.length}
 	aria-label="Horario semanal"
 >
-	<div class="flex min-h-0 flex-1 flex-col lg:hidden">
+	<div class="planner-alignment-pad flex min-h-[716px] min-w-0 flex-1 flex-col">
 		<div
-			class="flex shrink-0 gap-2 overflow-x-auto border-b border-border-subtle p-2"
-			role="tablist"
-			aria-label="Día del horario"
+			class="planner-surface grid min-h-[680px] flex-1 grid-cols-[40px_minmax(0,1fr)] grid-rows-[38px_minmax(0,1fr)] overflow-hidden rounded-[17px] lg:grid-cols-[48px_minmax(0,1fr)]"
 		>
-			{#each days as day (day)}
-				<button
-					class="neo-button min-h-11 shrink-0 px-3 text-xs font-bold text-secondary"
-					class:text-accent={activeDay === day}
-					type="button"
-					role="tab"
-					aria-selected={activeDay === day}
-					on:click={() => (activeDay = day)}>{getDayLabel(day).slice(0, 3)}</button
-				>
-			{/each}
-		</div>
-		<div class="min-h-0 flex-1 overflow-y-auto p-3" role="tabpanel">
-			<div class="mb-3 flex items-end justify-between gap-3">
-				<div>
-					<p class="text-[10px] font-bold tracking-[0.18em] text-muted uppercase">Agenda</p>
-					<h2 class="mt-1 text-lg font-extrabold text-primary">{getDayLabel(activeDay)}</h2>
-				</div>
-				<span class="text-xs text-secondary">{eventsByDay[activeDay]?.length ?? 0} bloques</span>
-			</div>
-			{#if (eventsByDay[activeDay]?.length ?? 0) === 0}
-				<div class="rounded-2xl border border-dashed border-border-strong p-5 text-center">
-					<p class="text-sm font-bold text-primary">Día libre</p>
-					<p class="mt-1 text-xs text-secondary">No hay cursos seleccionados para este día.</p>
-				</div>
-			{:else}
-				<div class="space-y-2">
-					{#each eventsByDay[activeDay] ?? [] as event (event.id)}
-						{@const range = getAcademicTimeRange(
-							event.startHourAcademic,
-							event.durationHours,
-							academicHours,
-						)}
-						<button
-							class={`neo-card flex min-h-20 w-full items-stretch overflow-hidden text-left ${event.conflictIds.length > 0 ? 'ring-2 ring-warning/30' : ''}`}
-							type="button"
-							on:click={() => onOpenEvent(event)}
-						>
-							<span class="w-1.5 shrink-0" style={`background:${event.color};`} aria-hidden="true"
-							></span>
-							<span class="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5">
-								<span class="w-20 shrink-0 text-xs font-extrabold text-primary"
-									>{range ? `${range.startTime} - ${range.endTime}` : 'Sin hora'}</span
-								>
-								<span class="min-w-0 flex-1"
-									><span class="block truncate text-sm font-extrabold text-primary"
-										>{event.title}</span
-									><span class="mt-1 block truncate text-xs text-secondary"
-										>{getModeLabel(event.mode)} · Grupo {event.groupName} · {event.classroomLabel ||
-											'Sin aula'}</span
-									></span
-								>
-								{#if event.conflictIds.length > 0}<span
-										class="rounded-lg bg-warning-soft px-2 py-1 text-[10px] font-bold text-warning"
-										>Cruce</span
-									>{/if}
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</div>
-
-	<div
-		class="hidden h-full min-h-0 grid-cols-[48px_minmax(0,1fr)] grid-rows-[38px_minmax(0,1fr)] lg:grid"
-	>
-		<div class="border-r border-b border-border-subtle bg-surface-muted"></div>
-		<div class="grid border-b border-border-subtle bg-surface-muted" style={dayColumnsStyle}>
-			{#each days as day (day)}<div
-					class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[14px]"
-				>
-					{getDayLabel(day)}
-				</div>{/each}
-		</div>
-		<div class="grid border-r border-border-subtle bg-surface-muted" style={rowsStyle}>
-			{#each boardHours as hour, index (hour)}
-				<div class="border-b border-border-subtle px-1 pt-1 text-right text-[11px] text-secondary">
+			<div class="planner-cell border-r border-b border-border-subtle"></div>
+			<div class="planner-cell grid border-b border-border-subtle" style={dayColumnsStyle}>
+				{#each boardDays as day (day)}
 					<div
-						class={`flex h-full ${index === boardHours.length - 1 ? 'flex-col justify-between pb-1' : 'items-start justify-end'}`}
+						class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[14px]"
+						title={getDayLabel(day)}
 					>
-						<span style="font-weight:600;">{formatBoardHour(hour)}</span>{#if index === boardHours.length - 1}<span
-								>{formatBoardHour(hour + 1)}</span
-							>{/if}
+						<span class="lg:hidden">{getDayCode(day)}</span>
+						<span class="hidden lg:inline">{getDayLabel(day)}</span>
 					</div>
-				</div>
-			{/each}
+				{/each}
+			</div>
+			<div class="planner-cell grid border-r border-border-subtle" style={rowsStyle}>
+				{#each boardHours as hour, index (hour)}
+					<div
+						class="border-b border-border-subtle px-1 pt-1 text-right text-[11px] text-secondary"
+					>
+						<div
+							class={`flex h-full ${index === boardHours.length - 1 ? 'flex-col justify-between pb-1' : 'items-start justify-end'}`}
+						>
+							<span style="font-weight:600;">{formatBoardHour(hour)}</span>
+							{#if index === boardHours.length - 1}<span>{formatBoardHour(hour + 1)}</span>{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+			<div class="grid min-h-0 bg-surface" style={dayColumnsStyle}>
+				{#each boardDays as day (day)}
+					<div
+						class="relative grid border-r border-border-subtle last:border-r-0"
+						style={rowsStyle}
+					>
+						{#each boardHours as hour (hour)}<div
+								class="planner-cell border-b border-border-subtle"
+							></div>{/each}
+						<div class="absolute inset-0">
+							{#each eventsByDay[day] ?? [] as event (event.id)}
+								{@const layout = getEventLayout(event)}
+								{#if layout}
+									<SessionCard
+										{event}
+										timeLabel={layout.timeLabel}
+										topPercent={layout.topPercent}
+										heightPercent={layout.heightPercent}
+										onOpen={onOpenEvent}
+									/>
+								{/if}
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</div>
 		</div>
-		<div class="grid min-h-0 bg-surface" style={dayColumnsStyle}>
-			{#each days as day (day)}
-				<div class="relative grid border-r border-border-subtle last:border-r-0" style={rowsStyle}>
-					{#each boardHours as hour (hour)}<div class="border-b border-border-subtle"></div>{/each}
-					<div class="absolute inset-0">
-						{#each eventsByDay[day] ?? [] as event (event.id)}
-							{@const layout = getEventLayout(event)}
-							{#if layout}<SessionCard
-									{event}
-									timeLabel={layout.timeLabel}
-									topPercent={layout.topPercent}
-									heightPercent={layout.heightPercent}
-									onOpen={onOpenEvent}
-								/>{/if}
+
+		{#if conflictingEvents.length > 0}
+			<div class="mt-1 lg:hidden">
+				<button
+					class="flex min-h-10 w-full items-center justify-between rounded-xl bg-warning-soft px-3 text-left text-[11px] font-bold text-warning"
+					type="button"
+					aria-expanded={showMobileConflicts}
+					on:click={() => (showMobileConflicts = !showMobileConflicts)}
+				>
+					<span class="inline-flex items-center gap-1.5">
+						<svg
+							class="h-4 w-4 stroke-current"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke-width="2"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v5M12 17h.01" /></svg
+						>
+						Ver cursos con cruce
+					</span>
+					<span>{conflictingEvents.length}</span>
+				</button>
+				{#if showMobileConflicts}
+					<div class="mt-1 flex flex-wrap gap-1" role="status">
+						{#each conflictingEvents as event (event.id)}
+							<button
+								class="rounded-lg bg-warning-soft px-2 py-1 text-[10px] font-bold text-warning"
+								type="button"
+								on:click={() => onOpenEvent(event)}>{event.code} · {getDayCode(event.day)}</button
+							>
 						{/each}
 					</div>
-				</div>
-			{/each}
-		</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </section>
