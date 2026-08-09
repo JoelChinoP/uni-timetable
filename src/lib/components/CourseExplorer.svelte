@@ -21,9 +21,9 @@
 
 <aside class="neo-panel flex h-full min-h-0 flex-col overflow-hidden p-3">
 	<header class="flex items-center justify-between gap-2 px-1">
-		<div>
-			<h1 class="text-sm font-extrabold text-primary">Cursos</h1>
-			<p class="mt-0.5 text-[10px] font-semibold text-muted">{termLabel}</p>
+		<div class="mb-2">
+			<h1 class="text-sm font-extrabold text-primary xl:text-[18px]">Cursos</h1>
+			<p class="-mt-0.5 text-[11px] font-semibold text-muted">{termLabel}</p>
 		</div>
 		<div
 			class={`rounded-xl px-2.5 py-1.5 text-[10px] font-bold ${summary.conflictCount > 0 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}
@@ -31,15 +31,18 @@
 			aria-live="polite"
 		>
 			{summary.conflictCount > 0
-				? `${summary.conflictCount} cruce${summary.conflictCount === 1 ? '' : 's'}`
-				: 'Sin cruces'}
+				? `${summary.conflictCount} conflicto${summary.conflictCount === 1 ? '' : 's'}`
+				: 'Sin conflictos'}
 		</div>
 	</header>
 
-	<div class="mt-3 grid grid-cols-[minmax(0,1fr)_76px_44px] gap-2">
-		<label class="neo-control flex min-w-0 items-center gap-2 px-3" aria-label="Buscar cursos">
+	<div class="grid grid-cols-[minmax(0,1fr)_auto_44px] gap-1">
+		<label
+			class="neo-control flex min-w-0 items-center gap-1 px-2 text-[16px]"
+			aria-label="Buscar cursos"
+		>
 			<svg
-				class="h-4 w-4 shrink-0 stroke-muted"
+				class="h-5 w-5 shrink-0 stroke-muted"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke-width="1.9"
@@ -47,16 +50,16 @@
 				aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg
 			>
 			<input
-				class="h-11 min-w-0 flex-1 bg-transparent text-xs text-primary outline-none placeholder:text-muted"
+				class="h-9 min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-muted"
 				type="search"
 				placeholder="Buscar…"
 				value={searchQuery}
 				on:input={(event) => onSearchChange((event.currentTarget as HTMLInputElement).value)}
 			/>
 		</label>
-		<label class="neo-control grid px-1" aria-label="Filtrar por año">
+		<label class="neo-control grid px-1 text-[16px]" aria-label="Filtrar por año">
 			<select
-				class="min-w-0 bg-transparent px-1 text-xs font-bold text-primary outline-none"
+				class="min-w-0 bg-transparent px-1 font-bold text-primary outline-none"
 				value={selectedYear ?? ''}
 				on:change={(event) =>
 					onYearChange(
@@ -65,12 +68,12 @@
 							: null,
 					)}
 			>
-				<option value="">Año</option>
+				<option value="">#</option>
 				{#each availableYears as year (year)}<option value={year}>{year}°</option>{/each}
 			</select>
 		</label>
 		<button
-			class="neo-button grid h-11 w-11 place-items-center text-secondary disabled:opacity-40"
+			class="neo-button grid h-10 w-10 place-items-center text-secondary disabled:opacity-40"
 			type="button"
 			title="Limpiar selección"
 			aria-label="Limpiar selección"
@@ -78,7 +81,7 @@
 			on:click={onClearSelection}
 		>
 			<svg
-				class="h-4 w-4 stroke-current"
+				class="h-6 w-6 stroke-current"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke-width="1.9"
@@ -88,12 +91,12 @@
 		</button>
 	</div>
 
-	<div class="mt-2 flex items-center justify-between px-1 text-[10px] text-secondary">
+	<div class="mt-0.75 flex items-center justify-between px-4 text-[11px] text-secondary">
 		<span><strong class="text-primary">{summary.selectedCourses}</strong> seleccionados</span>
 		<span>{bundles.length} cursos</span>
 	</div>
 
-	<div class="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
+	<div class="mt-1 min-h-0 flex-1 overflow-y-auto pr-1">
 		{#if bundles.length === 0}
 			<div class="rounded-2xl border border-dashed border-border-strong p-4">
 				<h2 class="text-sm font-bold text-primary">Sin resultados</h2>

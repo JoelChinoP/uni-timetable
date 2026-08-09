@@ -39,21 +39,21 @@
 			type="button"
 			on:click={() => onOpenDetails(primary)}
 		>
-			<h3 class="truncate text-[13px] leading-5 font-extrabold text-primary" title={primary.name}>
+			<h3 class="truncate text-[14px] leading-5 font-extrabold text-primary" title={primary.name}>
 				{primary.name}
 			</h3>
-			<p class="text-[10px] font-bold tracking-[0.12em] text-muted uppercase">
+			<p class="	text-[10px] font-bold tracking-[0.12em] text-muted uppercase">
 				{primary.abbreviation.replace(/-L$/, '')} · {primary.academicYear}° año
 			</p>
 		</button>
 		<button
-			class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-secondary transition hover:bg-surface-muted hover:text-accent"
+			class="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-secondary transition hover:bg-surface-muted hover:text-accent"
 			type="button"
 			aria-label={`Ver detalles de ${primary.name}`}
 			on:click={() => onOpenDetails(primary)}
 		>
 			<svg
-				class="h-4 w-4 stroke-current"
+				class="h-6 w-6 stroke-current"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke-width="1.9"
@@ -63,13 +63,13 @@
 		</button>
 	</header>
 
-	<div class="mt-2 grid gap-2">
+	<div class="mt-1 grid gap-1">
 		{#each related as course (course.id)}
 			<section
-				class="rounded-xl bg-surface-muted/70 p-2"
+				class="rounded-md bg-surface-muted/70 p-1"
 				aria-label={course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}
 			>
-				<div class="mb-1.5 flex items-center justify-between gap-2">
+				<div class="mb-1 flex items-center justify-between gap-21">
 					<span class="text-[9px] font-extrabold tracking-[0.18em] text-secondary uppercase"
 						>{course.type === 'THEORY'
 							? 'Teoría'
@@ -82,18 +82,18 @@
 						>{/if}
 				</div>
 				{#if course.groups.length === 0}
-					<p class="text-[11px] text-muted">Sin grupos</p>
+					<p class="text-[14px] text-muted">Sin grupos</p>
 				{:else}
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-wrap gap-1">
 						{#each course.groups as group (group.id)}
 							<button
-								class="neo-button min-h-10 min-w-10 px-2 text-xs font-extrabold text-secondary sm:min-h-9"
+								class="neo-button min-h-8 min-w-8 text-xs font-extrabold text-secondary sm:min-h-8 sm:min-w-8"
 								type="button"
 								aria-label={`${course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}, grupo ${group.name}`}
 								aria-pressed={group.id === selectedGroups[String(course.id)]}
 								style={group.id === selectedGroups[String(course.id)]
-									? `background:${course.color};border-color:transparent;color:${getContrastTextColor(course.color)};`
-									: ''}
+									? `background:${course.color};border-color:transparent;color:${getContrastTextColor(course.color)};font-weight:600;`
+									: 'font-weight:600;'}
 								on:click={() => onToggleGroup(course.id, group.id)}>{group.name}</button
 							>
 						{/each}
