@@ -17,6 +17,7 @@
 	--ui-border: rgba(81, 101, 132, 0.16);
 	--ui-border-strong: rgba(81, 101, 132, 0.3);
 	--ui-grid: rgba(81, 101, 132, 0.14);
+	--ui-planner-grid: rgba(81, 101, 132, 0.12);
 	--ui-text: #17253b;
 	--ui-text-secondary: #4e607a;
 	--ui-text-muted: #71819a;
@@ -194,9 +195,6 @@ button:disabled {
 	box-shadow:
 		-10px -10px 24px rgba(64, 69, 53, 0.24),
 		14px 14px 30px rgba(0, 0, 0, 0.82);
-}
-
-:root[data-theme='dark'] {
 	--ui-planner-grid: rgba(178, 187, 151, 0.1625);
 }
 
