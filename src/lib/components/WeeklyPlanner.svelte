@@ -94,9 +94,12 @@
 			</div>
 			<div class="grid min-h-0 bg-surface" style={dayColumnsStyle}>
 				{#each boardDays as day (day)}
-					<div class="relative grid border-r border-planner-grid last:border-r-0" style={rowsStyle}>
+					<div
+						class="relative grid border-r border-border-subtle last:border-r-0"
+						style={rowsStyle}
+					>
 						{#each boardHours as hour (hour)}<div
-								class="planner-cell border-b border-planner-grid"
+								class="planner-cell border-b border-border-subtle"
 							></div>{/each}
 						<div class="absolute inset-0">
 							{#each eventsByDay[day] ?? [] as event (event.id)}
