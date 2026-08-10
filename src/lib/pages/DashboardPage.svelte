@@ -136,7 +136,7 @@
 		sharing = true;
 		dismissShare();
 		try {
-			const { id } = await createSharedTimetable($selection);
+			const { id } = await createSharedTimetable($selection, selectedYears);
 			shareUrl = `${window.location.origin}/s/${id}`;
 			try {
 				await navigator.clipboard.writeText(shareUrl);

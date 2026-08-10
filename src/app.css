@@ -59,6 +59,7 @@
 	--ui-glass: rgba(24, 27, 22, 0.84);
 	--ui-border: rgba(202, 190, 157, 0.13);
 	--ui-border-strong: rgba(202, 190, 157, 0.26);
+	--ui-planner-grid: rgba(81, 101, 132, 0.12);
 	--ui-grid: rgba(178, 187, 151, 0.13);
 	--ui-text: #f1eee4;
 	--ui-text-secondary: #c4bdab;
@@ -95,6 +96,7 @@
 	--color-border-subtle: var(--ui-border);
 	--color-border-strong: var(--ui-border-strong);
 	--color-grid: var(--ui-grid);
+	--color-planner-grid: var(--ui-planner-grid);
 	--color-primary: var(--ui-text);
 	--color-secondary: var(--ui-text-secondary);
 	--color-muted: var(--ui-text-muted);
@@ -192,6 +194,10 @@ button:disabled {
 	box-shadow:
 		-10px -10px 24px rgba(64, 69, 53, 0.24),
 		14px 14px 30px rgba(0, 0, 0, 0.82);
+}
+
+:root[data-theme='dark'] {
+	--ui-planner-grid: rgba(178, 187, 151, 0.1625);
 }
 
 .planner-island {

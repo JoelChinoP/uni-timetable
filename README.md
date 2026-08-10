@@ -155,9 +155,9 @@ docker run --rm -v "$PWD/backend:/src" -w /src sqlc/sqlc generate
 | `GET`    | `/ready`              | `204` si PostgreSQL responde; `503` en otro caso |
 | `GET`    | `/internal/keepalive` | Ejecuta `select 1` con autorización de cron      |
 
-Los enlaces compartidos guardan una copia de la selección `{courseId: groupId}` en
-`app.shared_timetables` con un id aleatorio de 10 caracteres (`crypto/rand`). No guardan ni dependen
-del usuario emisor; el receptor decide si solo revisa el horario o lo adopta en su navegador.
+Los enlaces compartidos guardan una copia de la selección `{courseId: groupId}` y de los años
+seleccionados en `app.shared_timetables`, con un id aleatorio de 10 caracteres (`crypto/rand`). No
+guardan ni dependen del usuario emisor; el receptor decide si solo revisa el horario o lo adopta en su navegador.
 
 Las consultas de usuarios se declaran una vez en `internal/database/queries/users.sql`, se compilan
 con SQLC `v1.31.1` a código Go tipado y se ejecutan sobre el pool existente, usando el modo `Exec`
@@ -188,13 +188,6 @@ psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/m
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/003_classroom_overlap.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/004_roles_and_lab_prefixes.sql
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/005_lab_prefixes_are_presentational.sql
-```
-
-Después de cargar los datos 2026-B, aplica la corrección de las sesiones que ya
-existieran en la base:
-
-```bash
-psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/006_correct_2026_b_schedule.sql
 ```
 
 `ADMIN_EMAIL` no se inserta como SQL estático: al autenticar ese correo con Google, la API hace un

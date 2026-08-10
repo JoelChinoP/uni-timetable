@@ -62,6 +62,7 @@ export interface PlannerData {
 export interface SharedTimetable {
 	id: string;
 	selection: Record<string, number>;
+	years: number[];
 }
 
 export interface SelectedCourseGroup {

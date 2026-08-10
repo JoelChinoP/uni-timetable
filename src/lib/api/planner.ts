@@ -5,10 +5,10 @@ export function getDashboard() {
 	return request<PlannerData>('/planner/dashboard');
 }
 
-export function createSharedTimetable(selection: Record<string, number>) {
+export function createSharedTimetable(selection: Record<string, number>, years: number[] = []) {
 	return request<{ id: string }>('/shared', {
 		method: 'POST',
-		body: JSON.stringify({ selection }),
+		body: JSON.stringify({ selection, years }),
 	});
 }
 

@@ -22,6 +22,7 @@
 
 	let data: PlannerData | null = null;
 	let sharedSelection: Record<string, number> = {};
+	let sharedYears: number[] = [];
 	let loadError = '';
 	let detailCourse: Course | null = null;
 	let focusedSessionId: number | null = null;
@@ -31,6 +32,7 @@
 		try {
 			const [dashboard, shared] = await Promise.all([getDashboard(), getSharedTimetable(shareId)]);
 			data = dashboard;
+			sharedYears = shared.years;
 			sharedSelection = {};
 			for (const course of dashboard.courses) {
 				const groupId = shared.selection[String(course.id)];
@@ -58,6 +60,11 @@
 
 	function useTimetable() {
 		replaceSelection(sharedSelection);
+		try {
+			window.localStorage.setItem('uni-timetable:year-filter:v1', JSON.stringify(sharedYears));
+		} catch {
+			// El horario se puede adoptar aunque el navegador bloquee el almacenamiento.
+		}
 		onNavigate('/');
 	}
 </script>

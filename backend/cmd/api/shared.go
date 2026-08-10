@@ -61,6 +61,22 @@ func normalizeSelection(raw map[string]json.RawMessage) ([]byte, error) {
 	return json.Marshal(selection)
 }
 
+func normalizeYears(years []int) ([]int, error) {
+	normalized := make([]int, 0, len(years))
+	seen := make(map[int]struct{}, len(years))
+	for _, year := range years {
+		if year < 1 || year > 5 {
+			return nil, fmt.Errorf("years contiene un año inválido")
+		}
+		if _, ok := seen[year]; ok {
+			return nil, fmt.Errorf("years contiene años repetidos")
+		}
+		seen[year] = struct{}{}
+		normalized = append(normalized, year)
+	}
+	return normalized, nil
+}
+
 func (handler *sharedHandler) shared(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -79,6 +95,7 @@ func (handler *sharedHandler) createShared(w http.ResponseWriter, r *http.Reques
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	var request struct {
 		Selection map[string]json.RawMessage `json:"selection"`
+		Years     []int                      `json:"years"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid share payload")
@@ -86,6 +103,11 @@ func (handler *sharedHandler) createShared(w http.ResponseWriter, r *http.Reques
 	}
 
 	selection, err := normalizeSelection(request.Selection)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	years, err := normalizeYears(request.Years)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -119,9 +141,17 @@ func (handler *sharedHandler) createShared(w http.ResponseWriter, r *http.Reques
 			writeError(w, http.StatusInternalServerError, "share unavailable")
 			return
 		}
+		payload, err := json.Marshal(struct {
+			Selection json.RawMessage `json:"selection"`
+			Years     []int           `json:"years"`
+		}{Selection: selection, Years: years})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "share unavailable")
+			return
+		}
 		err = handler.queries.CreateSharedTimetable(ctx, database.CreateSharedTimetableParams{
 			ID:      id,
-			Column2: string(selection),
+			Column2: string(payload),
 		})
 		if err == nil {
 			writeJSON(w, http.StatusCreated, map[string]string{"id": id})
@@ -160,6 +190,18 @@ func (handler *sharedHandler) getShared(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	// selection already is a validated JSON object; echo it verbatim.
-	fmt.Fprintf(w, "{\"data\":{\"id\":%q,\"selection\":%s}}\n", id, selection)
+	responseSelection := selection
+	responseYears := []int{}
+	var payload struct {
+		Selection json.RawMessage `json:"selection"`
+		Years     []int           `json:"years"`
+	}
+	if err := json.Unmarshal(selection, &payload); err == nil && len(payload.Selection) > 0 {
+		responseSelection = payload.Selection
+		if payload.Years != nil {
+			responseYears = payload.Years
+		}
+	}
+	yearsJSON, _ := json.Marshal(responseYears)
+	fmt.Fprintf(w, "{\"data\":{\"id\":%q,\"selection\":%s,\"years\":%s}}\n", id, responseSelection, yearsJSON)
 }

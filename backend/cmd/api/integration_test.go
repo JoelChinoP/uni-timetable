@@ -309,7 +309,7 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	}
 
 	// Compartir: flujo completo ida y vuelta.
-	response = doJSON(handler, "POST", "/shared", `{"selection":{"1":1}}`, nil)
+	response = doJSON(handler, "POST", "/shared", `{"selection":{"1":1},"years":[1,3]}`, nil)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("create share: %d %s", response.Code, response.Body.String())
 	}
@@ -333,6 +333,7 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	var sharedView struct {
 		Data struct {
 			Selection map[string]int `json:"selection"`
+			Years     []int          `json:"years"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &sharedView); err != nil {
@@ -340,6 +341,9 @@ func TestIntegrationCatalogFlow(t *testing.T) {
 	}
 	if sharedView.Data.Selection["1"] != 1 {
 		t.Fatalf("selection = %v", sharedView.Data.Selection)
+	}
+	if len(sharedView.Data.Years) != 2 || sharedView.Data.Years[0] != 1 || sharedView.Data.Years[1] != 3 {
+		t.Fatalf("years = %v", sharedView.Data.Years)
 	}
 	response = doJSON(handler, "GET", "/shared/ZZZZZZZZZZ", "", nil)
 	if response.Code != http.StatusNotFound {

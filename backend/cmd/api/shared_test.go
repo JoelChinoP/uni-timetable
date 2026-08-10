@@ -64,3 +64,16 @@ func TestNormalizeSelectionOverflow(t *testing.T) {
 		t.Fatal("oversized selection must be rejected")
 	}
 }
+
+func TestNormalizeYears(t *testing.T) {
+	years, err := normalizeYears([]int{1, 3})
+	if err != nil || len(years) != 2 || years[0] != 1 || years[1] != 3 {
+		t.Fatalf("years = %v, err = %v", years, err)
+	}
+	if _, err := normalizeYears([]int{0}); err == nil {
+		t.Fatal("invalid year must be rejected")
+	}
+	if _, err := normalizeYears([]int{2, 2}); err == nil {
+		t.Fatal("duplicate year must be rejected")
+	}
+}
