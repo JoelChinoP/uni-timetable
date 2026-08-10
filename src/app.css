@@ -17,7 +17,7 @@
 	--ui-border: rgba(81, 101, 132, 0.16);
 	--ui-border-strong: rgba(81, 101, 132, 0.3);
 	--ui-grid: rgba(81, 101, 132, 0.14);
-	--ui-planner-grid: rgba(81, 101, 132, 0.10);
+	--ui-planner-grid: rgba(81, 101, 132, 0.12);
 	--ui-text: #17253b;
 	--ui-text-secondary: #4e607a;
 	--ui-text-muted: #71819a;
@@ -60,7 +60,7 @@
 	--ui-glass: rgba(24, 27, 22, 0.84);
 	--ui-border: rgba(202, 190, 157, 0.13);
 	--ui-border-strong: rgba(202, 190, 157, 0.26);
-	--ui-planner-grid: rgba(81, 101, 132, 0.10);
+	--ui-planner-grid: rgba(81, 101, 132, 0.12);
 	--ui-grid: rgba(178, 187, 151, 0.13);
 	--ui-text: #f1eee4;
 	--ui-text-secondary: #c4bdab;
