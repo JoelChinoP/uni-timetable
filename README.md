@@ -190,6 +190,13 @@ psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/m
 psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/005_lab_prefixes_are_presentational.sql
 ```
 
+Después de cargar los datos 2026-B, aplica la corrección de las sesiones que ya
+existieran en la base:
+
+```bash
+psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f backend/internal/database/migrations/006_correct_2026_b_schedule.sql
+```
+
 `ADMIN_EMAIL` no se inserta como SQL estático: al autenticar ese correo con Google, la API hace un
 `upsert` en `app.users` con rol `ADMIN`. Define el correo en `backend/.env` y en Vercel API.
 

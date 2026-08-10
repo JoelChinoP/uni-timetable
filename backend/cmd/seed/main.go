@@ -19,7 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-//go:embed horarios_2026_B_data.json
+//go:embed 2026_B_data.json
 var dataJSON []byte
 
 const (

@@ -41,7 +41,7 @@
 			const requestedId = Number(search.get('classroom'));
 			const years = [...new Set(dashboard.courses.map((course) => course.academicYear))].sort();
 			const requestedYear = Number(search.get('year'));
-			const activeYear = years.includes(requestedYear) ? requestedYear : (years[0] ?? null);
+			const activeYear = years.includes(requestedYear) ? requestedYear : null;
 			const busiestClassroom = nextClassrooms
 				.map((classroom) => ({
 					id: classroom.id,
