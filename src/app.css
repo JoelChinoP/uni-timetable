@@ -225,7 +225,7 @@ button:disabled {
 
 .planner-cell {
 	background: color-mix(in srgb, var(--ui-surface) 97%, var(--ui-accent) 3%);
-	box-shadow: inset 0 1px 2px color-mix(in srgb, var(--ui-text) 5%, transparent);
+	/* box-shadow: inset 0 1px 2px color-mix(in srgb, var(--ui-text) 5%, transparent); */
 }
 
 .planner-header-cell {
