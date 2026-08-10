@@ -185,6 +185,7 @@ button:disabled {
 }
 
 .course-island {
+	border-color: color-mix(in srgb, var(--ui-border) 85%, var(--ui-border-strong) 15%);
 	background: color-mix(in srgb, var(--ui-surface) 96%, var(--ui-accent) 4%);
 	box-shadow:
 		-12px -12px 26px color-mix(in srgb, white 70%, transparent),
@@ -199,16 +200,17 @@ button:disabled {
 }
 
 .planner-island {
+	border-color: color-mix(in srgb, var(--ui-border) 85%, var(--ui-border-strong) 15%);
 	background: color-mix(in srgb, var(--ui-surface) 96%, var(--ui-accent) 4%);
 	box-shadow:
-		-14px -14px 30px color-mix(in srgb, white 74%, transparent),
-		16px 16px 34px color-mix(in srgb, #7186a5 30%, transparent);
+		-15px -15px 32px color-mix(in srgb, white 76%, transparent),
+		17px 17px 36px color-mix(in srgb, #7186a5 32%, transparent);
 }
 
 :root[data-theme='dark'] .planner-island {
 	box-shadow:
-		-12px -12px 28px rgba(64, 69, 53, 0.22),
-		16px 16px 36px rgba(0, 0, 0, 0.9);
+		-13px -13px 30px rgba(64, 69, 53, 0.24),
+		17px 17px 38px rgba(0, 0, 0, 0.92);
 }
 
 .planner-alignment-pad {
