@@ -185,31 +185,35 @@ button:disabled {
 }
 
 .course-island {
-	border-color: color-mix(in srgb, var(--ui-border) 80%, var(--ui-border-strong) 20%);
+	border-color: var(--ui-border-strong);
 	background: color-mix(in srgb, var(--ui-surface) 96%, var(--ui-accent) 4%);
 	box-shadow:
 		-10px -10px 24px color-mix(in srgb, white 70%, transparent),
+		0 14px 22px color-mix(in srgb, #7186a5 22%, transparent),
 		12px 18px 32px color-mix(in srgb, #7186a5 32%, transparent);
 }
 
 :root[data-theme='dark'] .course-island {
 	box-shadow:
 		-10px -10px 24px rgba(64, 69, 53, 0.24),
-		14px 14px 30px rgba(0, 0, 0, 0.82);
+		0 16px 24px rgba(0, 0, 0, 0.66),
+		14px 18px 32px rgba(0, 0, 0, 0.84);
 	--ui-planner-grid: rgba(178, 187, 151, 0.1625);
 }
 
 .planner-island {
-	border-color: color-mix(in srgb, var(--ui-border) 80%, var(--ui-border-strong) 20%);
+	border-color: var(--ui-border-strong);
 	background: color-mix(in srgb, var(--ui-surface) 96%, var(--ui-accent) 4%);
 	box-shadow:
 		-13px -13px 30px color-mix(in srgb, white 76%, transparent),
+		0 16px 26px color-mix(in srgb, #7186a5 24%, transparent),
 		15px 20px 40px color-mix(in srgb, #7186a5 36%, transparent);
 }
 
 :root[data-theme='dark'] .planner-island {
 	box-shadow:
 		-12px -12px 28px rgba(64, 69, 53, 0.24),
+		0 16px 28px rgba(0, 0, 0, 0.72),
 		15px 20px 42px rgba(0, 0, 0, 0.94);
 }
 
