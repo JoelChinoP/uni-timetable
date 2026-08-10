@@ -16,3 +16,5 @@ backend/bin/
 !.vscode/extensions.json
 .idea/
 .DS_Store
+.vercel
+.env*
