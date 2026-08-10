@@ -43,7 +43,7 @@
 			on:click={() => onOpenDetails(primary)}
 		>
 			<h3
-				class="truncate leading-5 font-extrabold text-primary xl:text-[16.5px]"
+				class="truncate leading-5 font-extrabold text-primary text-[13px] xl:text-[16.5px]"
 				title={getCourseDisplayName(primary)}
 			>
 				{getCourseDisplayName(primary)}
