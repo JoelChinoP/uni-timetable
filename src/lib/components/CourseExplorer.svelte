@@ -54,12 +54,12 @@
 <aside class="neo-panel course-island flex h-full min-h-0 flex-col overflow-hidden p-3">
 	<header class="flex items-center justify-between gap-2 px-1">
 		<div class="mb-2">
-			<h1 class="text-sm font-extrabold text-primary xl:text-[18px]">Cursos</h1>
+			<h1 class="text-sm font-extrabold text-primary xl:text-[20px]">Cursos</h1>
 			<p class="-mt-0.5 text-[11px] font-semibold text-muted">{termLabel}</p>
 		</div>
 		<div class="flex items-center gap-1">
 			<div
-				class={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold ${summary.conflictCount > 0 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}
+				class={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold ${summary.conflictCount > 0 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}
 				role="status"
 				aria-live="polite"
 			>
@@ -160,7 +160,7 @@
 			</summary>
 			<div class="glass-panel absolute right-0 z-20 mt-1 w-36 rounded-xl p-2">
 				{#each availableYears as year (year)}<label
-						class="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 text-xs font-bold text-primary hover:bg-surface-muted"
+						class="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 text-xs font-bold text-primary hover:bg-surface-muted text-[14px]"
 						><input
 							class="h-4 w-4 accent-accent"
 							type="checkbox"
@@ -169,7 +169,7 @@
 						/>{getAcademicYearLabel(year)}</label
 					>{/each}
 				{#if selectedYears.length > 0}<button
-						class="mt-1 min-h-9 w-full rounded-lg text-xs font-bold text-accent hover:bg-accent-soft"
+						class="mt-1 min-h-8 w-full rounded-lg text-xs text-accent hover:bg-accent-soft font-bold"
 						type="button"
 						on:click={() => onYearsChange([])}>Todos</button
 					>{/if}
@@ -193,7 +193,7 @@
 			>
 		</button>
 	</div>
-	<div class="mt-0.75 flex items-center justify-between px-4 text-[11px] text-secondary">
+	<div class="mt-0.75 flex items-center justify-between px-6 text-[12px] text-secondary">
 		<span><strong class="text-primary">{summary.selectedCourses}</strong> seleccionados</span>
 		<span>{bundles.length} cursos</span>
 	</div>

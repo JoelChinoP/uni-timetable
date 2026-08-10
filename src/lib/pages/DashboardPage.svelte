@@ -241,12 +241,12 @@
 			</section>
 		{:else}
 			<div
-				class="neo-control grid grid-cols-2 gap-1 p-1 lg:hidden"
+				class="neo-control mobile-view-tabs grid grid-cols-2 gap-[3px] p-[3px] lg:hidden"
 				role="tablist"
 				aria-label="Vista del dashboard"
 			>
 				<button
-					class="min-h-11 rounded-[10px] text-sm font-bold text-secondary"
+					class="min-h-7 rounded-[8px] text-xs font-bold text-secondary"
 					class:bg-surface={mobileView === 'courses'}
 					class:shadow-card={mobileView === 'courses'}
 					class:text-primary={mobileView === 'courses'}
@@ -257,7 +257,7 @@
 					>Cursos <span class="text-xs text-muted">{summary.selectedCourses}</span></button
 				>
 				<button
-					class="min-h-11 rounded-[10px] text-sm font-bold text-secondary"
+					class="min-h-7 rounded-[8px] text-xs font-bold text-secondary"
 					class:bg-surface={mobileView === 'planner'}
 					class:shadow-card={mobileView === 'planner'}
 					class:text-primary={mobileView === 'planner'}
@@ -270,7 +270,7 @@
 			</div>
 
 			<div
-				class="grid min-h-0 w-full min-w-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,400px)]"
+				class="grid min-h-0 w-full min-w-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]"
 			>
 				<div
 					class="order-2 min-h-[32rem] min-w-0 flex-1 overflow-auto rounded-[17px] lg:order-1 lg:flex lg:min-h-0"
@@ -419,3 +419,15 @@
 		/>
 	{/if}
 </div>
+
+<style>
+	.mobile-view-tabs:focus-within {
+		border-color: var(--ui-border);
+		background: var(--ui-surface-muted);
+		box-shadow: var(--ui-shadow-control);
+	}
+
+	.mobile-view-tabs button {
+		-webkit-tap-highlight-color: transparent;
+	}
+</style>

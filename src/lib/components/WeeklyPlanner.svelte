@@ -16,7 +16,7 @@
 	export let onOpenEvent: (event: PlannerEvent) => void;
 
 	let showMobileConflicts = false;
-	const boardDays = plannerDays;
+	const boardDays = plannerDays.filter((day) => day !== 'SATURDAY');
 	const mobileDayCodes: Record<PlannerDay, string> = {
 		MONDAY: 'L',
 		TUESDAY: 'M',
@@ -59,19 +59,21 @@
 </script>
 
 <section
-	class="neo-panel planner-island flex min-h-[720px] min-w-0 flex-1 flex-col overflow-auto"
+	class="neo-panel planner-island planner-shell flex min-h-[540px] min-w-0 flex-1 flex-col overflow-auto lg:min-h-[720px]"
 	data-source-days={days.length}
 	aria-label="Horario semanal"
 >
-	<div class="planner-alignment-pad flex min-h-[716px] min-w-0 flex-1 flex-col">
+	<div
+		class="planner-alignment-pad flex min-h-[537px] min-w-[125%] flex-1 flex-col lg:min-h-[716px] lg:min-w-0"
+	>
 		<div
-			class="planner-surface grid min-h-[680px] flex-1 grid-cols-[52px_minmax(0,1fr)] grid-rows-[38px_minmax(0,1fr)] overflow-hidden rounded-[17px] lg:grid-cols-[48px_minmax(0,1fr)]"
+			class="planner-surface grid min-h-[510px] flex-1 grid-cols-[40px_minmax(0,1fr)] grid-rows-[29px_minmax(0,1fr)] overflow-hidden rounded-[14px] lg:min-h-[680px] lg:grid-cols-[48px_minmax(0,1fr)] lg:grid-rows-[38px_minmax(0,1fr)] lg:rounded-[17px]"
 		>
 			<div class="planner-header-cell border-r border-b border-border-subtle"></div>
 			<div class="planner-header-cell grid border-b border-border-subtle" style={dayColumnsStyle}>
 				{#each boardDays as day (day)}
 					<div
-						class="flex items-center justify-center border-r border-border-subtle px-1 text-[10px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[14px]"
+						class="flex items-center justify-center border-r border-border-subtle px-1 text-[13px] font-extrabold tracking-wide text-primary uppercase last:border-r-0 xl:text-[15px]"
 						title={getDayLabel(day)}
 					>
 						<span class="lg:hidden">{mobileDayCodes[day]}</span>
@@ -82,7 +84,7 @@
 			<div class="planner-header-cell grid border-r border-border-subtle" style={rowsStyle}>
 				{#each boardHours as hour (hour)}
 					<div
-						class="border-b border-border-subtle px-1 pt-1 text-center text-[9px] text-secondary lg:text-right lg:text-[11px]"
+						class="border-b border-border-subtle px-1 pt-1 text-center text-[11px] text-secondary lg:text-right lg:text-[13px]"
 					>
 						<div class="flex h-full items-start justify-center lg:justify-end">
 							<span style="font-weight:600;">{formatBoardHour(hour)}</span>
@@ -155,3 +157,11 @@
 		{/if}
 	</div>
 </section>
+
+<style>
+	@media (max-width: 1023px) {
+		.planner-shell {
+			border-radius: 16px;
+		}
+	}
+</style>

@@ -43,7 +43,7 @@
 			on:click={() => onOpenDetails(primary)}
 		>
 			<h3
-				class="truncate text-[14px] leading-5 font-extrabold text-primary"
+				class="truncate leading-5 font-extrabold text-primary xl:text-[16.5px]"
 				title={getCourseDisplayName(primary)}
 			>
 				{getCourseDisplayName(primary)}
@@ -85,19 +85,25 @@
 	<div class="mt-1 flex flex-wrap gap-1">
 		{#each related as course (course.id)}
 			<section
-				class={`relative min-w-0 rounded-md bg-surface-muted/70 p-1 ${related.length === 1 ? 'basis-full' : 'basis-[calc(50%_-_0.125rem)]'}`}
+				class={`relative min-w-0 rounded-md bg-surface-muted/70 p-1 ${
+					related.length === 1
+						? 'basis-full'
+						: course.type === 'THEORY'
+							? 'basis-[calc(40%_-_0.125rem)]'
+							: 'basis-[calc(60%_-_0.125rem)]'
+				}`}
 				aria-label={course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}
 			>
 				<div class="mb-1 flex items-center">
 					<span
-						class="min-w-0 text-[9px] font-extrabold tracking-[0.12em] text-secondary uppercase"
+						class="min-w-0 text-[10px] font-extrabold tracking-[0.12em] text-secondary uppercase"
 					>
 						{course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}
 					</span>
 
 					{#if selectedGroups[String(course.id)]}
 						<span
-							class="absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-accent text-accent-contrast"
+							class="absolute top-1 right-1 mr-1 grid h-4 w-4 place-items-center rounded-full bg-accent text-accent-contrast"
 							title="Seleccionado"
 						>
 							<svg
@@ -117,19 +123,19 @@
 				</div>
 
 				{#if course.groups.length === 0}
-					<p class="text-[14px] text-muted">Sin grupos</p>
+					<p class="text-[16px] text-muted">Sin grupos</p>
 				{:else}
-					<div class="flex flex-wrap gap-1">
+					<div class="-mt-0.5 flex flex-wrap gap-1">
 						{#each course.groups as group (group.id)}
 							<button
-								class="neo-button min-h-8 min-w-8 text-xs font-extrabold text-secondary sm:min-h-8 sm:min-w-8"
+								class="neo-button min-h-8 min-w-8 text-xs text-secondary sm:min-h-8 sm:min-w-8"
 								class:group-choice-selected={group.id === selectedGroups[String(course.id)]}
 								type="button"
 								aria-label={`${course.type === 'THEORY' ? 'Teoría' : 'Laboratorio'}, grupo ${group.name}`}
 								aria-pressed={group.id === selectedGroups[String(course.id)]}
 								style={group.id === selectedGroups[String(course.id)]
-									? `background:${course.color};border-color:transparent;color:${getContrastTextColor(course.color)};font-weight:600;`
-									: 'font-weight:600;'}
+									? `background:${course.color};border-color:transparent;color:${getContrastTextColor(course.color)};font-weight:650;`
+									: 'font-weight:650;'}
 								on:click={() => onToggleGroup(course.id, group.id)}
 							>
 								{group.name}

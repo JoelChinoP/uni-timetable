@@ -14,12 +14,11 @@
 			: event.code;
 	$: displayTitle =
 		event.mode === 'LABORATORY' ? `Lab - ${event.title.replace(/^Lab\s*-\s*/i, '')}` : event.title;
-	$: startTime = timeLabel.split(' - ')[0];
 	$: cardStyle = `--event-accent:${event.color};top:${topPercent}%;left:calc((100% * ${event.lane} / ${event.laneCount}) + 2px);width:calc((100% / ${event.laneCount}) - 4px);height:${heightPercent}%;background:color-mix(in srgb,var(--event-accent) 24%,var(--ui-surface));border-color:color-mix(in srgb,var(--event-accent) 58%,var(--ui-border));`;
 </script>
 
 <button
-	class={`planner-event-enter absolute flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-l-[3px] px-1 py-2 text-center shadow-card transition duration-150 hover:z-10 hover:border-accent lg:rounded-[10px] lg:px-1.75 lg:text-left ${
+	class={`planner-event-enter absolute flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-l-[3px] px-1 py-0.5 text-center shadow-card transition duration-150 hover:z-10 hover:border-accent lg:rounded-[10px] lg:px-1.75 lg:py-2 lg:text-left ${
 		event.conflictIds.length > 0
 			? 'ring-2 ring-warning/75 [clip-path:inset(0.5px_0_round_10px)] ring-inset'
 			: '[clip-path:inset(1.5px_0_round_10px)]'
@@ -33,7 +32,7 @@
 		class="relative flex min-w-0 flex-1 items-center justify-center gap-1 lg:flex-none lg:justify-start"
 	>
 		<span
-			class="max-w-full truncate text-center text-[8px] leading-3 font-extrabold tracking-[-0.02em] text-secondary uppercase lg:text-left lg:text-[10px] lg:tracking-[0.08em]"
+			class="max-w-full truncate text-center text-[13px] leading-[14px] font-extrabold tracking-[-0.02em] text-secondary uppercase lg:text-left lg:text-[12px] lg:leading-3 lg:tracking-[0.08em]"
 		>
 			{displayCode}
 		</span>
@@ -50,21 +49,16 @@
 		{/if}
 	</div>
 
-	<div class="hidden w-full text-center lg:flex">
+	<div class="mt-0.5 hidden w-full text-center lg:flex">
 		<strong
-			class="line-clamp-2 w-full px-0.5 text-center text-[12px] leading-5 font-bold text-primary xl:text-[14px]"
+			class="line-clamp-2 w-full px-0.5 text-center text-[12px] leading-5 font-bold text-primary xl:text-[16.5px]"
 		>
 			{displayTitle}
 		</strong>
 	</div>
 
 	<span
-		class="mt-auto truncate text-center text-[8px] leading-3 font-semibold text-secondary lg:hidden"
-	>
-		{startTime}
-	</span>
-	<span
-		class="mt-auto hidden truncate text-[10px] leading-3 font-semibold text-secondary lg:block xl:text-[10px]"
+		class="mt-auto text-[10px] leading-3 font-semibold text-secondary lg:block xl:text-[12.5px] mb-0.5 lg:mb-0"
 	>
 		{timeLabel}
 	</span>
