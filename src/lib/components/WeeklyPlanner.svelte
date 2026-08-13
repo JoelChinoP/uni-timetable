@@ -67,7 +67,7 @@
 		class="planner-alignment-pad flex min-h-[537px] min-w-[125%] flex-1 flex-col lg:min-h-[716px] lg:min-w-0"
 	>
 		<div
-			class="planner-surface grid min-h-[510px] flex-1 grid-cols-[40px_minmax(0,1fr)] grid-rows-[29px_minmax(0,1fr)] overflow-hidden rounded-[14px] lg:min-h-[680px] lg:grid-cols-[48px_minmax(0,1fr)] lg:grid-rows-[38px_minmax(0,1fr)] lg:rounded-[17px]"
+			class="planner-surface grid min-h-[510px] flex-1 grid-cols-[40px_minmax(0,1fr)] grid-rows-[29px_minmax(0,1fr)] overflow-hidden rounded-[14px] lg:min-h-[690px] lg:grid-cols-[60px_minmax(0,1fr)] lg:grid-rows-[38px_minmax(0,1fr)] lg:rounded-[17px]"
 		>
 			<div class="planner-header-cell border-r border-b border-border-subtle"></div>
 			<div class="planner-header-cell grid border-b border-border-subtle" style={dayColumnsStyle}>
